@@ -1,0 +1,570 @@
+{
+  "label": "Demo data",
+  "note": "Synthetic sample data for demo mode. Repositories named sample/... do not exist on GitHub, and no number here describes a real project.",
+  "as_of": "2026-10-01T06:00:00Z",
+  "repos": [
+    {
+      "full_name": "sample/tool-sdk",
+      "description": "A small SDK for building tools that language models can call.",
+      "language": "Python",
+      "topics": [
+        "agents",
+        "mcp",
+        "sdk"
+      ],
+      "stars": 2140,
+      "health": {
+        "score": 84,
+        "reasons": [
+          "Maintainers usually reply within a day",
+          "8 of 10 recent outside PRs merged",
+          "Last commit 2 days ago",
+          "Has CONTRIBUTING and issue templates"
+        ]
+      }
+    },
+    {
+      "full_name": "sample/agent-runtime",
+      "description": "Runtime and transport layer for long-running agents.",
+      "language": "Python",
+      "topics": [
+        "agents",
+        "async"
+      ],
+      "stars": 5310,
+      "health": {
+        "score": 76,
+        "reasons": [
+          "Maintainers usually reply within 2 days",
+          "7 of 10 recent outside PRs merged",
+          "Last commit 1 day ago",
+          "Asks for an issue before any PR"
+        ]
+      }
+    },
+    {
+      "full_name": "sample/ui-kit",
+      "description": "Accessible React components with a small API.",
+      "language": "TypeScript",
+      "topics": [
+        "react",
+        "web",
+        "accessibility"
+      ],
+      "stars": 8920,
+      "health": {
+        "score": 71,
+        "reasons": [
+          "Maintainers usually reply within 3 days",
+          "6 of 10 recent outside PRs merged",
+          "Last commit 4 days ago",
+          "38 open PRs waiting"
+        ]
+      }
+    },
+    {
+      "full_name": "sample/payments-lib",
+      "description": "A Java client for a payments REST API.",
+      "language": "Java",
+      "topics": [
+        "fintech",
+        "spring"
+      ],
+      "stars": 1210,
+      "health": {
+        "score": 63,
+        "reasons": [
+          "Maintainers usually reply within 5 days",
+          "5 of 10 recent outside PRs merged",
+          "Last commit 9 days ago",
+          "Has CONTRIBUTING, no issue templates"
+        ]
+      }
+    },
+    {
+      "full_name": "sample/queue-core",
+      "description": "A durable job queue with at-least-once delivery.",
+      "language": "Go",
+      "topics": [
+        "devops",
+        "queues"
+      ],
+      "stars": 3480,
+      "health": {
+        "score": 58,
+        "reasons": [
+          "Maintainers usually reply within a week",
+          "4 of 10 recent outside PRs merged",
+          "Last commit 6 days ago",
+          "Requires a DCO sign-off"
+        ]
+      }
+    },
+    {
+      "full_name": "sample/wire-format",
+      "description": "Zero-dependency binary serialisation.",
+      "language": "Rust",
+      "topics": [
+        "serialisation",
+        "performance"
+      ],
+      "stars": 960,
+      "health": {
+        "score": 41,
+        "reasons": [
+          "First maintainer reply often takes 2 weeks",
+          "3 of 10 recent outside PRs merged",
+          "Last commit 34 days ago"
+        ]
+      }
+    }
+  ],
+  "issues": [
+    {
+      "repo": "sample/tool-sdk",
+      "number": 112,
+      "title": "Fix broken link in the quickstart",
+      "labels": [
+        "good first issue",
+        "docs"
+      ],
+      "language": "Python",
+      "domain": "agents",
+      "issue_type": "docs",
+      "tier": "beginner",
+      "difficulty_score": 8,
+      "time_bucket": "under_an_hour",
+      "availability": "free",
+      "comments": 1,
+      "created_at": "2026-09-27T09:12:00Z",
+      "updated_at": "2026-09-28T10:00:00Z",
+      "why_here": "Beginner docs fix in Python, a language you are learning, in a healthy repo",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "Label 'good first issue'",
+        "Docs-only change",
+        "Short body with the file path named"
+      ]
+    },
+    {
+      "repo": "sample/ui-kit",
+      "number": 431,
+      "title": "Add a test for an empty result list",
+      "labels": [
+        "good first issue",
+        "tests"
+      ],
+      "language": "TypeScript",
+      "domain": "web",
+      "issue_type": "tests",
+      "tier": "beginner",
+      "difficulty_score": 15,
+      "time_bucket": "under_an_hour",
+      "availability": "free",
+      "comments": 2,
+      "created_at": "2026-09-25T14:30:00Z",
+      "updated_at": "2026-09-29T08:41:00Z",
+      "why_here": "Small test-only change with the file named in the issue",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "Label 'good first issue'",
+        "Test-only change",
+        "Clear expected behaviour"
+      ]
+    },
+    {
+      "repo": "sample/payments-lib",
+      "number": 77,
+      "title": "Document the retry settings",
+      "labels": [
+        "documentation"
+      ],
+      "language": "Java",
+      "domain": "fintech",
+      "issue_type": "docs",
+      "tier": "beginner",
+      "difficulty_score": 12,
+      "time_bucket": "under_an_hour",
+      "availability": "free",
+      "comments": 0,
+      "created_at": "2026-09-20T11:00:00Z",
+      "updated_at": "2026-09-20T11:00:00Z",
+      "why_here": "Docs task in your strong stack, nobody has replied yet",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "Docs-only change",
+        "No code changes expected"
+      ]
+    },
+    {
+      "repo": "sample/agent-runtime",
+      "number": 208,
+      "title": "Cover the timeout branch with a test",
+      "labels": [
+        "help wanted",
+        "tests"
+      ],
+      "language": "Python",
+      "domain": "agents",
+      "issue_type": "tests",
+      "tier": "beginner",
+      "difficulty_score": 30,
+      "time_bucket": "half_a_day",
+      "availability": "likely_free",
+      "comments": 4,
+      "created_at": "2026-08-30T16:20:00Z",
+      "updated_at": "2026-09-12T09:00:00Z",
+      "why_here": "Claim went quiet 19 days ago with no pull request",
+      "why_available": [
+        "No assignee",
+        "No linked pull request",
+        "Claimed 19 days ago by an outside contributor, no follow-up (stale after 14 days)"
+      ],
+      "why_tier": [
+        "Test-only change",
+        "Repro included",
+        "Label 'help wanted' moves it up slightly"
+      ]
+    },
+    {
+      "repo": "sample/agent-runtime",
+      "number": 215,
+      "title": "Client hangs when the server closes early",
+      "labels": [
+        "bug",
+        "help wanted"
+      ],
+      "language": "Python",
+      "domain": "agents",
+      "issue_type": "bug",
+      "tier": "intermediate",
+      "difficulty_score": 52,
+      "time_bucket": "half_a_day",
+      "availability": "free",
+      "comments": 6,
+      "created_at": "2026-09-18T07:45:00Z",
+      "updated_at": "2026-09-29T18:05:00Z",
+      "why_here": "Intermediate bug with a repro, maintainer already pointed at the file",
+      "why_available": [
+        "No assignee",
+        "No linked pull request",
+        "Maintainer wrote 'feel free to take this' (an invitation, not a claim)"
+      ],
+      "why_tier": [
+        "Label 'help wanted'",
+        "Repro with code block",
+        "Async and networking keywords"
+      ]
+    },
+    {
+      "repo": "sample/payments-lib",
+      "number": 81,
+      "title": "NullPointerException when the config has no profile",
+      "labels": [
+        "bug"
+      ],
+      "language": "Java",
+      "domain": "fintech",
+      "issue_type": "bug",
+      "tier": "intermediate",
+      "difficulty_score": 45,
+      "time_bucket": "a_weekend",
+      "availability": "free",
+      "comments": 3,
+      "created_at": "2026-09-10T10:10:00Z",
+      "updated_at": "2026-09-26T12:00:00Z",
+      "why_here": "Bug in your strong stack with a stack trace attached",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "Stack trace included",
+        "Touches config loading across two modules"
+      ]
+    },
+    {
+      "repo": "sample/ui-kit",
+      "number": 440,
+      "title": "Dropdown loses focus on re-render",
+      "labels": [
+        "bug",
+        "accessibility"
+      ],
+      "language": "TypeScript",
+      "domain": "web",
+      "issue_type": "bug",
+      "tier": "intermediate",
+      "difficulty_score": 48,
+      "time_bucket": "half_a_day",
+      "availability": "free",
+      "comments": 5,
+      "created_at": "2026-09-22T13:00:00Z",
+      "updated_at": "2026-09-30T07:30:00Z",
+      "why_here": "Accessibility bug with a minimal reproduction",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "Repro link included",
+        "Focus management needs care"
+      ]
+    },
+    {
+      "repo": "sample/queue-core",
+      "number": 57,
+      "title": "Add pagination to the jobs list endpoint",
+      "labels": [
+        "enhancement"
+      ],
+      "language": "Go",
+      "domain": "devops",
+      "issue_type": "feature",
+      "tier": "intermediate",
+      "difficulty_score": 58,
+      "time_bucket": "a_weekend",
+      "availability": "free",
+      "comments": 2,
+      "created_at": "2026-09-14T15:00:00Z",
+      "updated_at": "2026-09-24T09:15:00Z",
+      "why_here": "Feature a maintainer has agreed to; repo needs a DCO sign-off",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "Small feature with agreed design",
+        "Touches API and storage layers"
+      ]
+    },
+    {
+      "repo": "sample/agent-runtime",
+      "number": 230,
+      "title": "Support streaming responses in the transport layer",
+      "labels": [
+        "enhancement",
+        "needs proposal"
+      ],
+      "language": "Python",
+      "domain": "agents",
+      "issue_type": "feature",
+      "tier": "pro",
+      "difficulty_score": 82,
+      "time_bucket": "a_week_or_more",
+      "availability": "free",
+      "comments": 14,
+      "created_at": "2026-07-02T08:00:00Z",
+      "updated_at": "2026-09-27T20:10:00Z",
+      "why_here": "Pro-level stretch item; the repo asks for a proposal first",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "'needs proposal' label",
+        "Long discussion (14 comments)",
+        "Concurrency and streaming keywords"
+      ]
+    },
+    {
+      "repo": "sample/queue-core",
+      "number": 63,
+      "title": "Race condition in the job scheduler",
+      "labels": [
+        "bug",
+        "concurrency"
+      ],
+      "language": "Go",
+      "domain": "devops",
+      "issue_type": "bug",
+      "tier": "pro",
+      "difficulty_score": 79,
+      "time_bucket": "a_weekend",
+      "availability": "free",
+      "comments": 9,
+      "created_at": "2026-08-21T12:00:00Z",
+      "updated_at": "2026-09-25T11:11:00Z",
+      "why_here": "Hard concurrency bug in a moderately healthy repo",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "Concurrency keywords",
+        "Several linked issues",
+        "No clear repro"
+      ]
+    },
+    {
+      "repo": "sample/wire-format",
+      "number": 19,
+      "title": "Zero-copy parsing for large payloads",
+      "labels": [
+        "performance"
+      ],
+      "language": "Rust",
+      "domain": "performance",
+      "issue_type": "feature",
+      "tier": "pro",
+      "difficulty_score": 88,
+      "time_bucket": "a_week_or_more",
+      "availability": "free",
+      "comments": 11,
+      "created_at": "2026-06-11T09:00:00Z",
+      "updated_at": "2026-09-03T10:00:00Z",
+      "why_here": "Free, but the repo is slow to review (health 41)",
+      "why_available": [
+        "No assignee",
+        "No linked or mentioning pull request",
+        "No claim comments"
+      ],
+      "why_tier": [
+        "Performance keywords",
+        "Design discussion still open"
+      ]
+    },
+    {
+      "repo": "sample/tool-sdk",
+      "number": 118,
+      "title": "Typo in the error message for missing tools",
+      "labels": [
+        "good first issue"
+      ],
+      "language": "Python",
+      "domain": "agents",
+      "issue_type": "docs",
+      "tier": "beginner",
+      "difficulty_score": 5,
+      "time_bucket": "under_an_hour",
+      "availability": "claimed",
+      "comments": 3,
+      "created_at": "2026-09-28T09:00:00Z",
+      "updated_at": "2026-09-29T11:00:00Z",
+      "why_here": "Not ranked: someone claimed it yesterday",
+      "why_available": [
+        "Outside contributor wrote 'I'll take this' 2 days ago"
+      ],
+      "why_tier": [
+        "Typo fix"
+      ]
+    },
+    {
+      "repo": "sample/ui-kit",
+      "number": 436,
+      "title": "Button ignores the disabled prop in dark mode",
+      "labels": [
+        "bug",
+        "good first issue"
+      ],
+      "language": "TypeScript",
+      "domain": "web",
+      "issue_type": "bug",
+      "tier": "beginner",
+      "difficulty_score": 28,
+      "time_bucket": "half_a_day",
+      "availability": "has_pr",
+      "comments": 4,
+      "created_at": "2026-09-19T10:00:00Z",
+      "updated_at": "2026-09-29T16:00:00Z",
+      "why_here": "Not ranked: an open pull request already mentions it",
+      "why_available": [
+        "Open pull request #452 mentions this issue in its body"
+      ],
+      "why_tier": [
+        "Label 'good first issue'",
+        "Small CSS change"
+      ]
+    },
+    {
+      "repo": "sample/payments-lib",
+      "number": 84,
+      "title": "Reactive client for the REST adapter",
+      "labels": [
+        "enhancement",
+        "needs confirmation"
+      ],
+      "language": "Java",
+      "domain": "fintech",
+      "issue_type": "feature",
+      "tier": "pro",
+      "difficulty_score": 74,
+      "time_bucket": "a_week_or_more",
+      "availability": "not_ready",
+      "comments": 7,
+      "created_at": "2026-09-01T10:00:00Z",
+      "updated_at": "2026-09-21T10:00:00Z",
+      "why_here": "Not ranked: maintainers have not accepted it yet",
+      "why_available": [
+        "Label 'needs confirmation' means maintainers have not accepted it"
+      ],
+      "why_tier": [
+        "Large feature across modules"
+      ]
+    }
+  ],
+  "pull_requests": [
+    {
+      "repo": "sample/tool-sdk",
+      "number": 41,
+      "title": "Fix broken link in the quickstart",
+      "status": "approved",
+      "opened_at": "2026-09-24T10:00:00Z",
+      "last_activity_at": "2026-09-30T09:00:00Z",
+      "needs_you": "Approved and checks pass. Nothing to do; a maintainer will merge."
+    },
+    {
+      "repo": "sample/ui-kit",
+      "number": 38,
+      "title": "Add a test for an empty result list",
+      "status": "changes_requested",
+      "opened_at": "2026-09-21T12:00:00Z",
+      "last_activity_at": "2026-09-29T15:00:00Z",
+      "needs_you": "2 review comments are waiting for you."
+    },
+    {
+      "repo": "sample/agent-runtime",
+      "number": 35,
+      "title": "Handle timeout in client reconnect",
+      "status": "stale",
+      "opened_at": "2026-09-12T08:00:00Z",
+      "last_activity_at": "2026-09-21T08:00:00Z",
+      "needs_you": "Quiet for 10 days. A polite nudge is drafted for you to copy."
+    },
+    {
+      "repo": "sample/queue-core",
+      "number": 29,
+      "title": "Clarify retry docs",
+      "status": "ci_failing",
+      "opened_at": "2026-09-27T08:00:00Z",
+      "last_activity_at": "2026-09-28T08:00:00Z",
+      "needs_you": "The DCO check fails: add a Signed-off-by line to your commit."
+    },
+    {
+      "repo": "sample/payments-lib",
+      "number": 22,
+      "title": "Add missing null check in the profile loader",
+      "status": "merged",
+      "opened_at": "2026-09-02T08:00:00Z",
+      "last_activity_at": "2026-09-08T08:00:00Z",
+      "needs_you": "Merged. Nothing to do."
+    }
+  ]
+}

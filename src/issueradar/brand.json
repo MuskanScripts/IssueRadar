@@ -1,0 +1,9 @@
+{
+  "name": "FirstPR",
+  "cli": "firstpr",
+  "distribution": "firstpr",
+  "env_prefix": "FIRSTPR",
+  "tagline": "Find open-source issues you can actually work on.",
+  "demo_label": "Demo data",
+  "repository": "https://github.com/MuskanScripts/IssueRadar"
+}

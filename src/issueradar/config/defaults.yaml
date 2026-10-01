@@ -1,0 +1,105 @@
+# Default settings. Your own firstpr.yaml overrides any value here.
+#
+# GitHub numbers come from GitHub's docs, checked 2026-10-01. Sources for each
+# are in docs/github-api-notes.md. Code reads them from here, never from
+# constants (ADR 0005).
+
+github:
+  api_url: https://api.github.com
+  graphql_url: https://api.github.com/graphql
+  user_agent: firstpr (+https://github.com/MuskanScripts/IssueRadar)
+  request_timeout_seconds: 30
+
+  rest:
+    authenticated_per_hour: 5000
+    unauthenticated_per_hour: 60
+    actions_token_per_hour: 1000
+    per_page: 100
+
+  graphql:
+    points_per_hour: 5000
+    max_page_size: 100        # first/last must be 1..100
+    max_nodes_per_call: 500000
+    server_timeout_seconds: 10
+    batch_size: 20            # issues per batched query; keeps calls well under the timeout
+
+  search:
+    requests_per_minute: 30
+    code_requests_per_minute: 10
+    unauthenticated_requests_per_minute: 10
+    max_results_per_query: 1000
+    max_query_chars: 256
+    max_boolean_operators: 5
+    max_repositories_per_query: 4000
+    per_page: 100
+
+  secondary:
+    max_concurrent_requests: 100       # shared by REST and GraphQL
+    rest_points_per_minute: 900
+    graphql_points_per_minute: 2000
+    cpu_seconds_per_minute: 90
+    graphql_cpu_seconds_per_minute: 60
+
+  concurrency:
+    max_in_flight: 1                   # serial by default, as GitHub recommends
+
+  retry:
+    max_retries: 4
+    min_secondary_wait_seconds: 60     # "wait for at least one minute"
+    backoff_factor: 2.0
+    max_wait_seconds: 3600
+
+  budget:
+    safety_margin: 0.10                # stop planning new work at 10% remaining
+
+availability:
+  stale_claim_days: 14
+  maintainer_associations: [OWNER, MEMBER, COLLABORATOR]
+  claim_patterns:
+    - "can i work on this"
+    - "can i take this"
+    - "could i work on this"
+    - "may i work on this"
+    - "i'll take this"
+    - "i will take this"
+    - "i'd like to work on this"
+    - "i would like to work on this"
+    - "working on this"
+    - "picking this up"
+    - "assign me"
+    - "assign this to me"
+    - "/assign"
+  invitation_patterns:
+    - "feel free to take this"
+    - "feel free to pick this up"
+    - "contributions welcome"
+    - "a pr is welcome"
+    - "pr welcome"
+    - "happy to accept a pr"
+
+difficulty:
+  beginner_max: 33        # 0-33 Beginner
+  intermediate_max: 66    # 34-66 Intermediate, 67-100 Pro
+
+health:
+  cache_hours: 24
+  weights:                # must add up to 100
+    first_response: 30
+    outside_merge_rate: 30
+    recent_commit: 20
+    pr_backlog: 10
+    contributor_docs: 10
+
+ranking:
+  weights:                # must add up to 1.0
+    tier_fit: 0.35
+    repo_health: 0.25
+    stack_fit: 0.20
+    freshness: 0.10
+    low_competition: 0.10
+
+pull_requests:
+  stale_days: 7
+
+digest:
+  top_n: 5
