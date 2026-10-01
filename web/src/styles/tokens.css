@@ -1,0 +1,97 @@
+/*
+ * Design tokens. The light values come from the landing page; the dark values
+ * are derived for the same roles and checked for WCAG AA contrast by
+ * src/styles/tokens.test.ts. Components use the roles, never raw hex values.
+ *
+ * Amber is the only saturated signal in the product: it means "free".
+ */
+
+:root {
+  color-scheme: light;
+
+  --ground: #f1f4f5;
+  --surface: #fbfcfc;
+  --surface-raised: #ffffff;
+
+  --ink: #0e1b2c;
+  --ink-secondary: #33465a;
+  --ink-muted: #4a5b6b;
+
+  --rule: #cbd5db;
+  --rule-soft: #e1e7eb;
+
+  --action: #2455f4;
+  --action-hover: #1b43cc;
+  --action-tint: #e4eaff;
+  --on-action: #ffffff;
+
+  --amber: #f2b01e;
+  --amber-tint: #fcefc7;
+  --amber-ink: #5c4200;
+  --on-amber: #0e1b2c;
+
+  --focus: #0e1b2c;
+  --radar-ring: #c5d0d8;
+  --radar-dot: #0e1b2c;
+}
+
+/* Dark theme follows the system unless the user picked light explicitly. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ground: #0a121c;
+    --surface: #101a26;
+    --surface-raised: #152232;
+
+    --ink: #eef2f5;
+    --ink-secondary: #c3cfda;
+    --ink-muted: #9aaaba;
+
+    --rule: #33465a;
+    --rule-soft: #1f2e3f;
+
+    --action: #8fa8ff;
+    --action-hover: #b3c4ff;
+    --action-tint: #1a2850;
+    --on-action: #0a121c;
+
+    --amber: #f2b01e;
+    --amber-tint: #3a2c06;
+    --amber-ink: #f8d47a;
+    --on-amber: #0e1b2c;
+
+    --focus: #eef2f5;
+    --radar-ring: #2b3b4d;
+    --radar-dot: #eef2f5;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ground: #0a121c;
+  --surface: #101a26;
+  --surface-raised: #152232;
+
+  --ink: #eef2f5;
+  --ink-secondary: #c3cfda;
+  --ink-muted: #9aaaba;
+
+  --rule: #33465a;
+  --rule-soft: #1f2e3f;
+
+  --action: #8fa8ff;
+  --action-hover: #b3c4ff;
+  --action-tint: #1a2850;
+  --on-action: #0a121c;
+
+  --amber: #f2b01e;
+  --amber-tint: #3a2c06;
+  --amber-ink: #f8d47a;
+  --on-amber: #0e1b2c;
+
+  --focus: #eef2f5;
+  --radar-ring: #2b3b4d;
+  --radar-dot: #eef2f5;
+}
