@@ -1,0 +1,22 @@
+# Example config. Copy to firstpr.yaml (git-ignored) and change what you need.
+# Anything you leave out uses the defaults in src/issueradar/config/defaults.yaml.
+#
+#   Copy-Item examples\firstpr.yaml firstpr.yaml
+#   firstpr doctor --config firstpr.yaml
+
+digest:
+  top_n: 5
+
+availability:
+  stale_claim_days: 14
+
+pull_requests:
+  stale_days: 7
+
+ranking:
+  weights:
+    tier_fit: 0.35
+    repo_health: 0.25
+    stack_fit: 0.20
+    freshness: 0.10
+    low_competition: 0.10

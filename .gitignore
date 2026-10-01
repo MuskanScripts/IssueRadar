@@ -18,14 +18,14 @@ web/coverage/
 web/playwright-report/
 web/test-results/
 
-# Local data and secrets
+# Local data and secrets (root only, so examples/ stays tracked)
 .env
 *.sqlite
 *.sqlite3
 *.db
-firstpr.yaml
-skills.yaml
-data/
+/firstpr.yaml
+/skills.yaml
+/data/
 
 # Editors and OS
 .vscode/
