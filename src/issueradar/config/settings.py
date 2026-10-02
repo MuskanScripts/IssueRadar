@@ -63,6 +63,7 @@ class RetryPolicy(_Strict):
     min_secondary_wait_seconds: float = Field(ge=60)
     backoff_factor: float = Field(ge=1)
     max_wait_seconds: float = Field(gt=0)
+    server_error_wait_seconds: float = Field(gt=0)
 
 
 class Budget(_Strict):
@@ -89,6 +90,15 @@ class GitHubSettings(_Strict):
                 "concurrency.max_in_flight cannot exceed secondary.max_concurrent_requests"
             )
         return self
+
+
+class StorageSettings(_Strict):
+    url: str | None = None
+
+
+class SyncSettings(_Strict):
+    max_pages_per_list: int = Field(ge=1, le=10)
+    scan_open_pull_requests: bool
 
 
 class AvailabilitySettings(_Strict):
@@ -158,6 +168,8 @@ class DigestSettings(_Strict):
 
 class Settings(_Strict):
     github: GitHubSettings
+    storage: StorageSettings
+    sync: SyncSettings
     availability: AvailabilitySettings
     difficulty: DifficultySettings
     health: HealthSettings

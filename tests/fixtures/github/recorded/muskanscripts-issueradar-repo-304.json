@@ -1,0 +1,21 @@
+{
+  "source": "recorded",
+  "recorded_at": "2026-10-02T13:33:49+00:00",
+  "authenticated": true,
+  "request": {
+    "method": "GET",
+    "url": "https://api.github.com/repos/MuskanScripts/IssueRadar"
+  },
+  "response": {
+    "status": 304,
+    "headers": {
+      "etag": "\"20e1ee59f908d383800b40277de5927021fa02a1bc1287a5792eaa3f088bd68b\"",
+      "x-ratelimit-limit": "15000",
+      "x-ratelimit-remaining": "14951",
+      "x-ratelimit-used": "49",
+      "x-ratelimit-reset": "1790950165",
+      "x-ratelimit-resource": "core"
+    },
+    "body": null
+  }
+}

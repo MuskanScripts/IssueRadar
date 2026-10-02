@@ -48,9 +48,19 @@ github:
     min_secondary_wait_seconds: 60     # "wait for at least one minute"
     backoff_factor: 2.0
     max_wait_seconds: 3600
+    server_error_wait_seconds: 2       # first wait after a 5xx, then backoff_factor
 
   budget:
     safety_margin: 0.10                # stop planning new work at 10% remaining
+
+storage:
+  # Leave empty to use a SQLite file in your user data folder.
+  # The FIRSTPR_DB_URL environment variable overrides this.
+  url:
+
+sync:
+  max_pages_per_list: 10   # 10 pages x 100 = up to 1,000 open issues or PRs per repo
+  scan_open_pull_requests: true
 
 availability:
   stale_claim_days: 14
