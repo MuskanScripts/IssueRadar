@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="44" viewBox="0 0 200 44" fill="none" role="img" aria-label="FirstPR">
+  <circle cx="22" cy="22" r="17" stroke="#0E1B2C" stroke-width="2.6"/>
+  <circle cx="22" cy="22" r="8.5" stroke="#0E1B2C" stroke-width="2.6"/>
+  <circle cx="31" cy="13" r="4.5" fill="#F2B01E" stroke="#0E1B2C" stroke-width="2.6"/>
+  <text x="50" y="31" fill="#0E1B2C" font-family="'Bricolage Grotesque', system-ui, sans-serif" font-weight="800" font-size="28" letter-spacing="-0.6">FirstPR</text>
+</svg>
