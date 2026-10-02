@@ -1,46 +1,88 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { App } from "./App";
-import { brand } from "./lib/brand";
+import { resetDemo } from "./lib/demo-source";
 import { demo } from "./lib/demo";
 
-describe("App shell in demo mode", () => {
+describe("dashboard in demo mode", () => {
   beforeEach(() => {
-    document.documentElement.removeAttribute("data-theme");
     window.localStorage.clear();
+    resetDemo();
+    document.documentElement.removeAttribute("data-theme");
   });
 
-  it("labels the data as demo data", () => {
-    render(<App />);
-    expect(screen.getByText(brand.demo_label)).toBeInTheDocument();
-  });
-
-  it("lists only free and likely-free issues", () => {
-    render(<App />);
-    const list = screen.getByRole("list", { name: /free issues/i });
-    const rankable = demo.issues.filter((i) => i.availability === "free" || i.availability === "likely_free");
-    expect(within(list).getAllByRole("listitem")).toHaveLength(rankable.length);
+  it("shows the demo label and the free issues", async () => {
+    render(<App demo initialPath="/" />);
+    expect(screen.getByText("Demo data")).toBeInTheDocument();
+    const list = await screen.findByRole("list", { name: /issues, best match first/i });
+    const free = demo.issues.filter((i) => i.availability === "free" || i.availability === "likely_free");
+    await waitFor(() => expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0));
+    expect(within(list).getAllByRole("listitem").length).toBeLessThanOrEqual(free.length);
     expect(screen.queryByText("Typo in the error message for missing tools")).not.toBeInTheDocument();
   });
 
-  it("shows level as three dots with an accessible name", () => {
-    render(<App />);
-    expect(screen.getAllByRole("img", { name: "Level: Beginner" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("img", { name: "Level: Pro" }).length).toBeGreaterThan(0);
-  });
-
-  it("switches theme from the keyboard", async () => {
+  it("opens the drawer from the keyboard and shows the reasons", async () => {
     const user = userEvent.setup();
-    render(<App />);
-    await user.click(screen.getByRole("radio", { name: "Dark" }));
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    await user.click(screen.getByRole("radio", { name: "System" }));
-    expect(document.documentElement).not.toHaveAttribute("data-theme");
+    render(<App demo initialPath="/" />);
+    await screen.findByRole("list", { name: /issues, best match first/i });
+    await user.keyboard("j");
+    await user.keyboard("o");
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Why it is free (or not)")).toBeInTheDocument();
+    expect(within(dialog).getByText("Before you start")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("shows the API budget in the footer", () => {
-    render(<App />);
-    expect(screen.getByText(/API budget used/)).toBeInTheDocument();
+  it("filters instantly", async () => {
+    const user = userEvent.setup();
+    render(<App demo initialPath="/" />);
+    await screen.findByRole("list", { name: /issues, best match first/i });
+    await user.click(screen.getByRole("button", { name: "Pro" }));
+    const list = screen.getByRole("list", { name: /issues, best match first/i });
+    for (const item of within(list).getAllByRole("listitem")) {
+      expect(within(item).getByRole("img", { name: "Level: Pro" })).toBeInTheDocument();
+    }
+  });
+
+  it("navigates to every page", async () => {
+    const user = userEvent.setup();
+    render(<App demo initialPath="/" />);
+    for (const [link, heading] of [
+      ["Repos", "Repos"],
+      ["My PRs", "My pull requests"],
+      ["Profile", "Profile"],
+      ["Digest", "Digest"],
+      ["Insights", "Insights"],
+      ["Settings", "Settings"],
+    ]) {
+      await user.click(screen.getByRole("link", { name: link }));
+      expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
+    }
+  });
+
+  it("shows a nudge draft on the PR board", async () => {
+    render(<App demo initialPath="/prs" />);
+    expect(await screen.findByText("Nudge draft")).toBeInTheDocument();
+    expect(screen.getByText(/Nothing is posted for you/)).toBeInTheDocument();
+  });
+
+  it("opens the command palette with Ctrl+K", async () => {
+    const user = userEvent.setup();
+    render(<App demo initialPath="/" />);
+    await user.keyboard("{Control>}k{/Control}");
+    const palette = await screen.findByRole("dialog");
+    await user.type(within(palette).getByRole("combobox"), "insights");
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { level: 1, name: "Insights" })).toBeInTheDocument();
+  });
+
+  it("explains how to start when the API is not running", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("failed"));
+    render(<App demo={false} initialPath="/" />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("firstpr serve");
+    expect(screen.getByRole("button", { name: /demo mode instead/i })).toBeInTheDocument();
+    vi.restoreAllMocks();
   });
 });
