@@ -81,7 +81,7 @@ def test_rest_guard_allows_only_get() -> None:
 
 def test_only_the_client_module_imports_httpx() -> None:
     importers = sorted(
-        str(path.relative_to(SRC))
+        path.relative_to(SRC).as_posix()
         for path in SRC.rglob("*.py")
         if re.search(r"^\s*(import httpx|from httpx\b)", path.read_text("utf-8"), re.MULTILINE)
     )
