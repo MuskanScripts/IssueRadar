@@ -79,13 +79,31 @@ def test_rest_guard_allows_only_get() -> None:
         ensure_read_only_rest("POST")
 
 
-def test_only_the_client_module_imports_httpx() -> None:
+def test_only_the_client_and_delivery_modules_import_httpx() -> None:
+    """GitHub traffic goes through github/client.py; digest delivery through delivery/http.py,
+    which refuses GitHub hosts (next test)."""
     importers = sorted(
         path.relative_to(SRC).as_posix()
         for path in SRC.rglob("*.py")
         if re.search(r"^\s*(import httpx|from httpx\b)", path.read_text("utf-8"), re.MULTILINE)
     )
-    assert importers == ["github/client.py"]
+    assert importers == ["delivery/http.py", "github/client.py"]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://api.github.com/repos/o/r/issues/1/comments",
+        "https://github.com/o/r",
+        "https://uploads.github.com/x",
+        "https://gist.github.com/x",
+    ],
+)
+def test_delivery_refuses_github_hosts(url: str) -> None:
+    from issueradar.delivery.http import post_json
+
+    with pytest.raises(ReadOnlyViolation):
+        post_json(url, {"body": "hello"})
 
 
 def test_fixtures_contain_no_tokens() -> None:
