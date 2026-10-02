@@ -130,6 +130,30 @@ says nothing about real repositories. Linux build container, Python 3.13,
 Markdown file and the RSS feed; the second prints "Nothing new since the last
 digest, so nothing was sent." and the feed file is byte-for-byte unchanged.
 
+## M4: PR statuses compared with github.com
+
+**Done when:** statuses match what github.com shows for at least 5 real PRs.
+
+**Recorded check.** `tests/test_prs.py::test_status_matches_github_for_real_prs`
+runs the tracker on five PRs recorded on 2026-10-02 with
+`python scripts/record_fixtures.py --pr MuskanScripts/IssueRadar#<n>`:
+
+| PR | What github.com showed | Tracker |
+| --- | --- | --- |
+| #2 | Merged | Merged |
+| #12 (Dependabot) | Closed without merging; one check had failed | Closed unmerged (not "CI failing", because it is closed) |
+| #14 | Merged | Merged |
+| #15 | Merged | Merged |
+| #16 | Open, six checks green, no reviews, opened that day | Waiting for review |
+
+**Live check.** `firstpr prs --repo MuskanScripts/IssueRadar --author
+MuskanScripts` on 2026-10-02 (18 requests; a second run answered all 18 with
+304) listed #16 waiting for review, #15, #14 and #2 merged, and #1 closed
+unmerged, matching GitHub for all six of the owner's PRs.
+
+**Frozen time.** Stale-day logic is tested at 6, 7 and 30 days of quiet with a
+fixed clock, and checks that the author's own commits don't reset it.
+
 ## M2: things noticed on real data
 
 Measured on MuskanScripts/IssueRadar on 2026-10-02 (`firstpr watch add

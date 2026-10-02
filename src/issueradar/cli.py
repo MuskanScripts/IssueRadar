@@ -27,13 +27,15 @@ from issueradar.delivery.http import DeliveryError
 from issueradar.demo import load_demo
 from issueradar.digest import DigestBuilder, mark, record_sent
 from issueradar.digest import render as digest_render
-from issueradar.digest.builder import issue_key
+from issueradar.digest.builder import issue_key, state_hash
 from issueradar.digest.channels import enabled_channels
+from issueradar.digest.model import PullItem
 from issueradar.engine import coach
 from issueradar.engine.rules import RepoRules, load_packs, load_rules
 from issueradar.engine.stack import SkillProfile, load_profile
 from issueradar.github import GitHubClient, GitHubError, token_from_env
-from issueradar.models import IssueType, Tier, TimeBucket, level_dots
+from issueradar.models import IssueType, PullRequestStatus, Tier, TimeBucket, level_dots
+from issueradar.prs.tracker import PullTracker, tracked
 from issueradar.radar import Filters, IssueReport, Radar
 from issueradar.storage import Database, open_database, resolve_database_url
 from issueradar.storage.etag_cache import SqlEtagCache
@@ -500,6 +502,7 @@ def _print_report(report: IssueReport) -> None:
         report.flags,
         discussion_first=report.difficulty.discussion_first,
         open_unreviewed_prs=_open_unreviewed(),
+        unreviewed_warning_at=load_settings().pull_requests.unreviewed_warning_at,
     ):
         console.print(f"  [ ] {line}", markup=False)
 
@@ -801,13 +804,117 @@ def digest(
 
 
 def _open_unreviewed() -> int:
-    """Your open PRs still waiting for a first review. Filled in by the PR tracker (M4)."""
-    return 0
+    """Your open PRs still waiting for a first review (from the last `prs` run)."""
+    try:
+        db = _database(load_settings())
+    except Exception:  # explain must still work without a database
+        return 0
+    return sum(1 for r in tracked(db) if r.state == "open" and not r.draft and not r.reviewed)
 
 
-def _pull_items(db: Database, settings: Settings):  # type: ignore[no-untyped-def]
-    """PR items for the digest. Filled in by the PR tracker (M4)."""
-    return None
+def _pull_items(db: Database, settings: Settings) -> Callable[[], list[PullItem]]:
+    """Open PRs, plus ones that closed recently, as digest items."""
+
+    def provider() -> list[PullItem]:
+        from datetime import timedelta
+
+        from issueradar.storage.models import as_utc, utcnow
+
+        since = utcnow() - timedelta(hours=settings.digest.new_since_hours)
+        items = []
+        for row in tracked(db):
+            closed = as_utc(row.closed_at)
+            if row.state != "open" and (closed is None or closed < since):
+                continue
+            items.append(
+                PullItem(
+                    key=f"pr:{row.repo_full_name}#{row.number}",
+                    repo=row.repo_full_name,
+                    number=row.number,
+                    title=row.title,
+                    url=row.url,
+                    status=PullRequestStatus(row.status).label,
+                    needs_you=row.needs_you,
+                    state_hash=state_hash(row.status),
+                    nudge=row.nudge,
+                )
+            )
+        return items
+
+    return provider
+
+
+@app.command()
+def prs(
+    refresh: Annotated[
+        bool, typer.Option("--refresh/--no-refresh", help="Ask GitHub first (default) or just list")
+    ] = True,
+    repo: Annotated[
+        list[str] | None,
+        typer.Option("--repo", help="Only PRs in this repo (skips the search API)"),
+    ] = None,
+    author: Annotated[
+        str | None, typer.Option("--author", help="GitHub login (default: the token's owner)")
+    ] = None,
+    show: Annotated[
+        str | None, typer.Option("--show", help="Show the timeline of one PR (owner/repo#12)")
+    ] = None,
+    config: ConfigOption = None,
+) -> None:
+    """Track the pull requests you opened and what each one needs from you."""
+    settings = _settings(config)
+    db = _database(settings)
+    if refresh and not show:
+
+        async def run():  # type: ignore[no-untyped-def]
+            async with _client(settings, db) as client:
+                tracker = PullTracker(db, client, settings, _rules())
+                result = await tracker.run(author=author, repos=repo)
+                console.print(f"[dim]{client.budget.summary().line()}[/dim]")
+                return result
+
+        try:
+            result = _run(run)
+        except GitHubError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(code=1) from exc
+        for key, message in result.failed.items():
+            console.print(f"[yellow]{key}: {message}[/yellow]")
+    rows = tracked(db)
+    if show:
+        match = [r for r in rows if f"{r.repo_full_name}#{r.number}".lower() == show.lower()]
+        if not match:
+            console.print(f"[red]{show} is not tracked. Run `{BRAND.cli} prs` first.[/red]")
+            raise typer.Exit(code=1)
+        row = match[0]
+        console.print(f"[bold]{row.title}[/bold]  {row.url or ''}")
+        console.print(f"{PullRequestStatus(row.status).label}: {row.needs_you}")
+        for reason in row.reasons:
+            console.print(f"  - {reason}")
+        if row.nudge:
+            console.print(
+                f"\nNudge draft (copy it if you want; it is never posted for you):\n  {row.nudge}"
+            )
+        console.print("\n[bold]Timeline[/bold]")
+        for event in row.timeline:
+            console.print(f"  {event['at'][:10]}  {event['text']}", markup=False)
+        return
+    if not rows:
+        console.print("No pull requests tracked yet.")
+        return
+    table = Table(title="Your pull requests (most urgent first)", title_justify="left")
+    table.add_column("PR", style="cyan", no_wrap=True)
+    table.add_column("Title")
+    table.add_column("Status", no_wrap=True)
+    table.add_column("What needs you", style="dim")
+    for row in rows:
+        table.add_row(
+            f"{row.repo_full_name}#{row.number}",
+            row.title,
+            PullRequestStatus(row.status).label,
+            row.needs_you,
+        )
+    console.print(table)
 
 
 def _item_key(value: str) -> str:

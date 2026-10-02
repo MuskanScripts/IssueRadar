@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (M4)
+
+- PR tracker: finds your PRs (search, or one repo's list) and derives a status from the PR, its reviews, checks and timeline.
+- `firstpr prs` (most urgent first) and `firstpr prs --show` (timeline and nudge draft).
+- Nudge drafts after 7 quiet days, shown for you to copy and never posted.
+- The digest's "Your pull requests" section, and a coach warning when 3 or more of your PRs await a first review.
+- PRs closed with a repo's bot-import label count as accepted.
+- Recorded fixtures of 5 real PRs; `scripts/record_fixtures.py --pr`.
+
 ### Added (M3)
 
 - Daily digest with free issues, your pull requests, new since yesterday, watchlist alerts and a quiet-day note.

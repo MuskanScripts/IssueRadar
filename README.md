@@ -15,10 +15,10 @@ GitHub**: it never comments, opens pull requests, assigns, stars or follows. Whe
 a pull request goes quiet it drafts a polite nudge for you to copy, and you
 decide whether to send it.
 
-> **Status: milestone M3 (CLI and digest).** Watch repositories, sync them, see
-> which issues are free and right for you, and get a daily digest by RSS,
-> Markdown, email, Telegram, Discord or Slack. PR tracking arrives in M4. See
-> [PLAN.md](PLAN.md) for the roadmap.
+> **Status: milestone M4 (PR tracker).** Watch repositories, sync them, see
+> which issues are free and right for you, track the pull requests you open,
+> and get a daily digest by RSS, Markdown, email, Telegram, Discord or Slack.
+> The web dashboard arrives in M5. See [PLAN.md](PLAN.md) for the roadmap.
 >
 > "FirstPR" is a working name.
 
@@ -73,7 +73,19 @@ firstpr digest            # preview
 firstpr digest --send     # writes digests/latest.md and digests/feed.xml
 ```
 
-Email, Telegram, Discord and Slack are set up in [docs/digest.md](docs/digest.md). Data is stored in a SQLite file in your user data
+Email, Telegram, Discord and Slack are set up in [docs/digest.md](docs/digest.md).
+
+### Your pull requests
+
+```powershell
+firstpr prs                                   # find your PRs and what each needs
+firstpr prs --show owner/repo#12              # one PR's timeline and nudge draft
+firstpr prs --repo owner/repo                 # only one repo (no search API needed)
+```
+
+Statuses, most urgent first: changes requested, CI failing, merge conflict,
+stale (with a polite nudge drafted for you to copy), approved, waiting for
+review, merged, closed. Nothing is ever posted for you. Data is stored in a SQLite file in your user data
 folder; set `FIRSTPR_DB_URL` to use another location or database.
 
 If PowerShell refuses to run `Activate.ps1`, allow local scripts for your user
