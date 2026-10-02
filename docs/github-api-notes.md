@@ -73,10 +73,12 @@ Source: `content/rest/using-the-rest-api/best-practices-for-using-the-rest-api.m
 - A `304` is only returned when the representation is unchanged. Different `per_page`, `page` or filters give a different ETag. Sorts like `sort=updated` reshuffle pages, so use a stable sort when polling.
 - Conditional requests are not supported for unsafe methods (irrelevant: FirstPR only sends `GET`).
 
-**To measure [M1].** The brief notes a third-party claim that authenticated
-conditional requests are unreliable. M1 adds a live check (`firstpr doctor
---measure-etag`) that records `x-ratelimit-remaining` before and after a `304`
-and writes the result to `RESULTS.md`. Unit tests use fixtures only.
+**Measured [M1].** `firstpr doctor --measure-etag OWNER/REPO` records
+`x-ratelimit-used` after a plain GET, a conditional GET and another plain GET.
+On 2026-10-02 the 304 cost nothing in 6 of 7 runs (one run moved the counter
+by one; the token was shared, so another request in between can't be ruled
+out). Details in [RESULTS.md](../RESULTS.md). Still to repeat with a personal
+fine-grained token.
 
 GraphQL has no ETag support. Repeated GraphQL reads are cached locally with a TTL.
 
@@ -142,7 +144,7 @@ limits before sending them.
 - GraphQL `Issue` has `timelineItems(itemTypes: [...], first: N)` and `closedByPullRequestsReferences(...)`. Verified (schema).
 - `IssueTimelineItemsItemType` includes `CROSS_REFERENCED_EVENT`, `CONNECTED_EVENT`, `DISCONNECTED_EVENT`, `ASSIGNED_EVENT`, `UNASSIGNED_EVENT`, `LABELED_EVENT`, `ISSUE_COMMENT`. Verified (schema).
 - `CrossReferencedEvent` has `willCloseTarget: Boolean!`, `source`, `actor`, `createdAt`. Verified (schema).
-- **To measure [M1].** Layer 2 (scan open PR titles and bodies for `#123`) is a design guess from the brief. M1 records real open-PR lists from a few repos and checks how many issue links it finds that `-linked:pr` misses.
+- **Measured [M1].** Layer 2 (scan open PR text for `#123`) is noisy on real data: Dependabot PR bodies copy upstream release notes and produced up to 159 unrelated numbers per PR. References are now split into strong (closing keywords) and weak (plain mentions), and bot PR bodies are skipped (ADR 0013, RESULTS.md). Whether it catches links that `-linked:pr` misses is still to measure on repos with real human PRs.
 
 ## 7. Comments and roles
 
@@ -178,8 +180,9 @@ whether a fine-grained token with no extra permissions can run
 
 | Item | When | How |
 | --- | --- | --- |
-| Authenticated `304` does not reduce `x-ratelimit-remaining` | M1 | Live measurement, recorded in `RESULTS.md` |
-| Open-PR scan finds links that `-linked:pr` misses | M1 | Recorded fixtures from real repos |
+| Authenticated `304` does not reduce `x-ratelimit-remaining` | M1, repeat with a personal token | Measured through a proxy token: free in 6 of 7 runs (`RESULTS.md`) |
+| Open-PR scan finds links that `-linked:pr` misses | M2 | Needs recordings of repos with human PRs |
+| Real GraphQL responses (errors in HTTP 200, timeline fields) | M2 | GraphQL was blocked in the build environment; record with `scripts/record_fixtures.py` and a token |
 | Fine-grained PAT can search `author:@me is:pr` | M4 | `firstpr doctor` with the user's token |
 | `GITHUB_TOKEN` reading other public repos | M6 | One run in the template repo |
 | Semantic/hybrid search limits | after v1 | Out of scope |

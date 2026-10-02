@@ -24,8 +24,8 @@ flowchart LR
 
 | Stage | What it does | Milestone |
 | --- | --- | --- |
-| Discover | Per-repo issue search with `is:issue state:open no:assignee -linked:pr`, incremental with `updated:>=` | M1 |
-| Fetch | REST with ETags; GraphQL batches for comments and timelines of finalists | M1 |
+| Discover and fetch | Per repo: repo, open issues, open PRs, with ETags and a stable sort (ADR 0012) | M1, built |
+| Finalists | Search `-linked:pr`; GraphQL batches for comments and timelines | M2 |
 | Normalise | Store repos, issues, signals and PRs with `user_id` on personal tables | M1 |
 | Enrich | Availability, difficulty, repo health, stack matching | M2 |
 | Score and rank | Weighted formulas from config, each with a "why" list | M2 |
@@ -37,7 +37,7 @@ All of these are thin shells over the same core package.
 
 | Interface | Exists today |
 | --- | --- |
-| CLI (`firstpr`) | `--version`, `doctor`, `demo` |
+| CLI (`firstpr`) | `--version`, `doctor` (with `--measure-etag`), `demo`, `watch add/remove/list`, `sync` |
 | FastAPI server | M5 |
 | React dashboard (`web/`) | Shell that renders demo data with the design tokens |
 | Scheduled GitHub Action | M6 |
@@ -58,6 +58,14 @@ src/issueradar/
   config/defaults.yaml     limits, thresholds, weights
   config/settings.py       pydantic schema, loader, friendly errors
   models.py                Tier, Availability, PullRequestStatus, ...
+  github/client.py         the only module that sends requests; read-only guard,
+                           retries, ETag cache, GraphQL errors in HTTP 200
+  github/budget.py         API budgeter per resource, safety margin
+  github/guard.py          refuses non-GET REST and GraphQL mutations
+  storage/models.py        every table from the brief, user_id on personal ones
+  storage/migrations/      Alembic migrations, applied automatically
+  sync/service.py          watchlist sync, per-repo transactions, resume
+  sync/normalize.py        GitHub JSON to table fields, PR references
   demo/loader.py           demo dataset schema and loader
   demo/fixtures/demo.json  demo data
 web/src/

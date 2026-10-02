@@ -15,8 +15,9 @@ GitHub**: it never comments, opens pull requests, assigns, stars or follows. Whe
 a pull request goes quiet it drafts a polite nudge for you to copy, and you
 decide whether to send it.
 
-> **Status: milestone M0 (scaffold).** The demo works. Syncing real repositories
-> arrives in M1. See [PLAN.md](PLAN.md) for the roadmap.
+> **Status: milestone M1 (GitHub client and sync).** You can watch repositories
+> and sync their open issues and pull requests. Scoring and the digest arrive in
+> M2 and M3. See [PLAN.md](PLAN.md) for the roadmap.
 >
 > "FirstPR" is a working name.
 
@@ -36,6 +37,21 @@ firstpr demo
 ```
 
 `firstpr demo` runs on bundled demo data. It needs no token and makes no API calls.
+
+### Watch and sync real repositories
+
+Create a read-only token first ([docs/human-tasks.md](docs/human-tasks.md)), then:
+
+```powershell
+$env:FIRSTPR_GITHUB_TOKEN = "your-read-only-token"
+firstpr doctor
+firstpr watch add modelcontextprotocol/python-sdk
+firstpr sync
+```
+
+Run `firstpr sync` again and most requests come back as free `304 Not Modified`
+answers from the local cache. Data is stored in a SQLite file in your user data
+folder; set `FIRSTPR_DB_URL` to use another location or database.
 
 If PowerShell refuses to run `Activate.ps1`, allow local scripts for your user
 once, then activate again:
@@ -87,7 +103,12 @@ src/issueradar/        Python core: CLI, config, models, demo data
   brand.json           the product name and other user-facing identifiers
   config/defaults.yaml every GitHub limit, threshold and scoring weight
   demo/fixtures/       demo data, always labelled "Demo data"
+  github/              the only code that talks to GitHub (read-only)
+  storage/             database tables and migrations
+  sync/                watchlist and sync
 tests/                 Python tests (never touch the network)
+  fixtures/github/     recorded and documented GitHub responses
+scripts/               fixture recorder
 web/                   React dashboard (Vite, TypeScript, Tailwind CSS)
 docs/                  architecture, ADRs, GitHub API notes, human tasks
 examples/              sample config and skills.yaml
@@ -97,6 +118,7 @@ examples/              sample config and skills.yaml
 
 - [PLAN.md](PLAN.md): milestones, decisions and risks
 - [docs/github-api-notes.md](docs/github-api-notes.md): GitHub API limits we rely on, with sources
+- [RESULTS.md](RESULTS.md): measured numbers, each with the command that produced it
 - [docs/architecture.md](docs/architecture.md): how the pieces fit
 - [docs/design-tokens.md](docs/design-tokens.md): colours, type and the rules for using them
 - [docs/adr](docs/adr): architecture decision records

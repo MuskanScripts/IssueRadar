@@ -39,3 +39,45 @@ def test_doctor_fails_on_bad_config(tmp_path: Path) -> None:
     result = runner.invoke(app, ["doctor", "--config", str(bad)])
     assert result.exit_code == 1
     assert "digest.top_n" in result.stdout
+
+
+def test_watch_add_list_remove() -> None:
+    added = runner.invoke(app, ["watch", "add", "octocat/Hello-World", "https://github.com/a/b"])
+    assert added.exit_code == 0, added.stdout
+    assert "Watching octocat/Hello-World." in added.stdout
+    listed = runner.invoke(app, ["watch", "list"])
+    assert listed.stdout.split() == ["octocat/Hello-World", "a/b"]
+    again = runner.invoke(app, ["watch", "add", "octocat/hello-world"])
+    assert "Already watching octocat/Hello-World." in again.stdout
+    removed = runner.invoke(app, ["watch", "remove", "a/b"])
+    assert "Stopped watching a/b." in removed.stdout
+
+
+def test_watch_rejects_bad_names() -> None:
+    result = runner.invoke(app, ["watch", "add", "not-a-repo"])
+    assert result.exit_code == 2
+    assert "is not a repository" in result.stdout
+
+
+def test_sync_with_empty_watchlist_explains_what_to_do() -> None:
+    result = runner.invoke(app, ["sync"])
+    assert result.exit_code == 1
+    assert "watch add" in result.stdout
+
+
+def test_doctor_reports_database() -> None:
+    result = runner.invoke(app, ["doctor"])
+    assert "Database is ready" in result.stdout
+
+
+def test_network_is_blocked_in_tests() -> None:
+    import asyncio
+
+    import httpx
+
+    async def call() -> None:
+        async with httpx.AsyncClient() as client:
+            await client.get("https://api.github.com/rate_limit")
+
+    with pytest.raises(RuntimeError, match="must not touch the network"):
+        asyncio.run(call())
