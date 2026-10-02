@@ -12,6 +12,10 @@ Keep this list current. Tick items when done.
   `firstpr watch add ...` and run `firstpr sync` twice.
 - [ ] **Record a few more real fixtures** with `python scripts/record_fixtures.py owner/repo`
   (repos with real issues and human PRs), so M2 tests use more than one repo.
+- [ ] **Verify the starter packs** with `firstpr pack verify <name>` for each pack and set
+  `verified: true` in the pack file when every repo looks active and open to outside PRs.
+- [ ] **Label at least 50 issues** with `firstpr eval sample` and `eval/README.md`, then run
+  `firstpr eval run eval/labels.csv` and add the numbers to `RESULTS.md`.
 - [ ] **Close Dependabot PRs #12 and #13** (React 19). The project is on React 18; Dependabot is
   now told to skip React major versions.
 - [ ] **Edit `examples/skills.yaml`** to match your real skills, then copy it to `skills.yaml`.
@@ -39,7 +43,6 @@ your own pull requests; if it cannot, the notes will say what to change.)
 - [ ] Register the OAuth app or GitHub App (M7).
 - [ ] Set up PyPI and a trusted publisher for releases (M6).
 - [ ] Check that the product name and domain are free to use.
-- [ ] Hand-label at least 50 issues in the evaluation CSV (M2 ships the template).
 - [ ] Record the demo screen recording (M6).
 - [ ] Ask 5 people to try it.
 - [ ] Enable GitHub Discussions.

@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (M2)
+
+- Availability engine with six states and a reason for every decision; maintainer invitations are never claims.
+- Difficulty engine (score, tier, time estimate, issue type), repo health engine with CLA, DCO, AI-policy and issue-first flags, stack matching against `skills.yaml`, and ranking.
+- Enrichment during sync: one `linked:pr` search per repo, comments and timelines for finalists, repo health inputs cached for 24 hours.
+- `firstpr explain`, `firstpr find`, `firstpr eval sample/run`, `firstpr pack list/add/verify`.
+- Per-repo rules and four starter packs (not verified yet).
+- `docs/scoring.md`, ADRs 0014 and 0015, migration 0002.
+
+### Fixed (M2)
+
+- Upgrading a SQLite database no longer deletes child rows: foreign keys are off while tables are rebuilt.
+- Repos that use YAML issue forms now get credit for an issue template.
+
 ### Added (M1)
 
 - Read-only GitHub client: REST `GET` only and GraphQL queries only, enforced by tests.

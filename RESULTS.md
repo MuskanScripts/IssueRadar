@@ -85,3 +85,37 @@ other reference, a weak signal), and bodies of bot-authored PRs are not
 scanned. On the same data: 0 false references. Covered by
 `tests/test_normalize.py::test_bot_pr_bodies_are_not_scanned_on_real_data`.
 The availability engine (M2) will weigh the two kinds differently.
+
+## M2: FREE detection and tier accuracy
+
+**Not measured yet.** These numbers need issues labelled by a person, and none
+are labelled yet. The command exists and is tested; the tests use made-up
+labels for a made-up repo, which are not results.
+
+To produce the numbers (see [eval/README.md](eval/README.md)):
+
+```powershell
+firstpr pack add ai-agents-and-mcp
+firstpr sync
+firstpr eval sample --out eval/labels.csv --per-repo 25
+# label at least 50 rows by hand, then:
+firstpr eval run eval/labels.csv --json eval/results.json
+```
+
+Paste the output here with the date and the commit it ran on.
+
+## M2: things noticed on real data
+
+Measured on MuskanScripts/IssueRadar on 2026-10-02 (`firstpr watch add
+MuskanScripts/IssueRadar`, `firstpr sync`), through the build container's
+GitHub access:
+
+- **Issue forms are invisible to the community profile.**
+  `GET /repos/{o}/{r}/community/profile` reported `issue_template: null` for a
+  repo with three YAML issue forms in `.github/ISSUE_TEMPLATE/`. IssueRadar now
+  checks that folder when the profile says no. Health went from 67 to 70 for
+  that repo once the forms were counted.
+- **Repo health on a brand-new repo is mostly "not enough data".** With no
+  outside PRs and no issues yet, two of five parts are unknown and scored 0.5.
+  The reasons say so instead of guessing.
+
