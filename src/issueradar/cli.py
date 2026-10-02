@@ -802,7 +802,9 @@ def digest(
         console.print(renderers[fmt](built), markup=False, highlight=False)
         return
     if built.is_empty and not built.quiet_message:
-        console.print("Nothing new since the last digest, so nothing was sent.")
+        message = "Nothing new since the last digest, so nothing was sent."
+        console.print(message)
+        _step_summary(f"{BRAND.name}: {message}")
         return
     try:
         channels = enabled_channels(settings.digest)
@@ -821,12 +823,17 @@ def digest(
             console.print(f"[red]{channel.name}: {exc}[/red]")
     if delivered:
         record_sent(db, built, delivered)
-        summary = os.environ.get("GITHUB_STEP_SUMMARY")
-        if summary:  # in GitHub Actions, show the digest on the run's page too
-            with Path(summary).open("a", encoding="utf-8") as handle:
-                handle.write(digest_render.markdown(built) + "\n")
+        _step_summary(digest_render.markdown(built))
     if len(delivered) < len(channels):
         raise typer.Exit(code=1)
+
+
+def _step_summary(markdown: str) -> None:
+    """In GitHub Actions, show the result on the run's page too."""
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with Path(summary).open("a", encoding="utf-8") as handle:
+            handle.write(markdown.rstrip() + "\n")
 
 
 def _open_unreviewed() -> int:

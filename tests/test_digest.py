@@ -304,6 +304,14 @@ async def test_digest_writes_github_step_summary(
     assert result.exit_code == 0, result.stdout
     assert "## Free for you" in summary.read_text("utf-8")
 
+    again = CliRunner().invoke(app, ["digest", "--send"])
+    assert again.exit_code == 0, again.stdout
+    assert (
+        summary.read_text("utf-8")
+        .rstrip()
+        .endswith("Nothing new since the last digest, so nothing was sent.")
+    )
+
 
 def test_daily_runs_every_step_and_reports_problems() -> None:
     result = CliRunner().invoke(app, ["daily", "--skip-prs"])

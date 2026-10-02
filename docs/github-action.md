@@ -37,9 +37,12 @@ also copy them by hand into any repo you like.
 | `author` | the repo owner | Whose pull requests to track. Empty skips PR tracking. |
 | `version` | empty | A PyPI version to install, for example `0.1.0`. Empty uses the code that ships with the action tag. |
 | `python-version` | `3.13` | Python to run with. |
+| `cache` | `true` | Keep the database between runs in the Actions cache. |
 | `upload-artifact` | `true` | Upload `digests/` as the `firstpr-digest` artifact. |
 
-Output: `digest`, the path of the Markdown digest (`digests/latest.md`).
+Output: `digest`, the path of the Markdown digest (`digests/latest.md`), or
+empty when nothing new turned up since the last run. In that case nothing is
+sent anywhere and the run summary says so.
 
 ### Delivery secrets
 

@@ -28,6 +28,7 @@ jobs:
           @('MuskanScripts/IssueRadar', 'modelcontextprotocol/python-sdk') |
             Set-Content user-repo/watchlist.txt -Encoding utf8
 
+      # A cold run, like a user's first day: it must write a digest.
       - name: Run the action
         id: radar
         uses: ./
@@ -36,12 +37,35 @@ jobs:
           config: user-repo/firstpr.yaml
           skills: user-repo/skills.yaml
           author: MuskanScripts
-          upload-artifact: "true"
+          cache: "false"
 
       - name: Check the digest was written
         shell: pwsh
         run: |
           $digest = '${{ steps.radar.outputs.digest }}'
-          if (-not (Test-Path $digest)) { throw "No digest at $digest" }
+          if (-not $digest -or -not (Test-Path $digest)) { throw "No digest was written" }
           if (-not (Test-Path digests/feed.xml)) { throw "No RSS feed" }
           Get-Content $digest -TotalCount 40
+          Copy-Item $digest "$env:RUNNER_TEMP/first.md"
+
+      # The next day with nothing new: it must send nothing again and still succeed.
+      - name: Run the action again on the same database
+        id: again
+        uses: ./
+        with:
+          watchlist: user-repo/watchlist.txt
+          config: user-repo/firstpr.yaml
+          skills: user-repo/skills.yaml
+          author: MuskanScripts
+          cache: "false"
+          upload-artifact: "false"
+
+      - name: Check nothing was repeated
+        shell: pwsh
+        run: |
+          $digest = '${{ steps.again.outputs.digest }}'
+          if (-not $digest) { Write-Output "Nothing new, nothing sent."; exit 0 }
+          # Something changed between the two runs. Only new issues may appear.
+          $links = { param($file) Select-String -Path $file -Pattern '\(https://github\.com/[^)]+/issues/\d+\)' -AllMatches | ForEach-Object { $_.Matches.Value } }
+          $repeated = (& $links "$env:RUNNER_TEMP/first.md") | Where-Object { (& $links $digest) -contains $_ }
+          if ($repeated) { throw "Issues sent twice: $($repeated -join ', ')" }

@@ -36,6 +36,10 @@ inputs:
     description: Python version to run with.
     required: false
     default: "3.13"
+  cache:
+    description: Keep the database between runs in the Actions cache. Without it every run starts cold and repeats issues.
+    required: false
+    default: "true"
   upload-artifact:
     description: Upload the digests folder as a build artifact.
     required: false
@@ -43,7 +47,7 @@ inputs:
 
 outputs:
   digest:
-    description: Path to the Markdown digest written by this run.
+    description: Path to the Markdown digest, or empty when nothing new was found since the last run.
     value: ${{ steps.daily.outputs.digest }}
 
 runs:
@@ -68,6 +72,7 @@ runs:
 
     # The database keeps ETags, what was already sent and your PR history between runs.
     - name: Restore the database
+      if: inputs.cache == 'true'
       uses: actions/cache/restore@v4
       with:
         path: .firstpr
@@ -85,6 +90,7 @@ runs:
         CONFIG_FILE: ${{ inputs.config }}
         SKILLS_FILE: ${{ inputs.skills }}
       run: |
+        $started = (Get-Date).ToUniversalTime()
         New-Item -ItemType Directory -Force -Path .firstpr | Out-Null
         $common = @()
         if (Test-Path $env:CONFIG_FILE) { $common += @('--config', $env:CONFIG_FILE) }
@@ -100,11 +106,13 @@ runs:
         if (-not $env:FIRSTPR_AUTHOR) { $daily += '--skip-prs' }
         firstpr @daily
         $code = $LASTEXITCODE
-        "digest=digests/latest.md" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        # latest.md is only rewritten when something new was sent this run.
+        $digest = if ((Test-Path digests/latest.md) -and ((Get-Item digests/latest.md).LastWriteTimeUtc -ge $started)) { 'digests/latest.md' } else { '' }
+        "digest=$digest" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
         exit $code
 
     - name: Save the database
-      if: always()
+      if: always() && inputs.cache == 'true'
       uses: actions/cache/save@v4
       with:
         path: .firstpr
@@ -116,5 +124,5 @@ runs:
       with:
         name: firstpr-digest
         path: digests/
-        if-no-files-found: warn
+        if-no-files-found: ignore
         retention-days: 30
