@@ -67,8 +67,6 @@ your own pull requests; if it cannot, the notes will say what to change.)
 - [ ] **Clean-machine test.** On a Windows machine (or a fresh Windows Sandbox) with only
   Python installed, follow the README from the top and time it. Done when it takes under
   10 minutes. Note what was confusing.
-- [ ] **Read the self-test result** (`Action self-test` workflow) and copy what `GITHUB_TOKEN`
-  could read into RESULTS.md.
 
 ## Later
 

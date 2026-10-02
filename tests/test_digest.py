@@ -144,6 +144,23 @@ def test_renderers() -> None:
     assert "Fix &lt;typo&gt;" in html and "#F2B01E" in html
 
 
+def test_pr_status_is_not_said_twice() -> None:
+    def pr(status: str, needs: str) -> PullItem:
+        return PullItem("pr:o/r#3", "o/r", 3, "T", None, status, needs, "h")
+
+    d = sample_digest()
+    d.pulls[:] = [
+        pr("Merged", "Merged. Nothing to do."),
+        pr("Waiting for review", "Waiting for a first review. Nothing to do yet."),
+        pr("Stale", "Quiet for 9 days"),
+    ]
+    md = render.markdown(d)
+    assert "Merged. Merged." not in md and "T. Merged. Nothing to do." in md
+    assert "Waiting for review. Waiting" not in md
+    assert "T. Stale. Quiet for 9 days" in md
+    assert "o/r#3  Merged. Nothing to do." in render.text(d)
+
+
 def test_markdown_and_rss_files(tmp_path: Path) -> None:
     d = sample_digest()
     assert "wrote" in ch.MarkdownChannel(tmp_path).send(d)
