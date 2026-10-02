@@ -11,6 +11,12 @@ dist/
 .coverage
 htmlcov/
 
+# The dashboard build copied into the package for releases
+src/issueradar/web/
+
+# Digests written by `firstpr digest --send` in a clone
+/digests/
+
 # Node
 web/node_modules/
 web/dist/

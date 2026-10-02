@@ -59,9 +59,13 @@ Issues = "https://github.com/MuskanScripts/IssueRadar/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/issueradar"]
+# The built dashboard is copied here by scripts/bundle_web.py before a release
+# build. It is git-ignored, so it has to be listed as an artifact.
+artifacts = ["src/issueradar/web/**"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/issueradar", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+artifacts = ["src/issueradar/web/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
