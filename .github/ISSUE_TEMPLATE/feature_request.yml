@@ -1,0 +1,22 @@
+name: Idea
+description: Suggest an improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is hard or slow today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+  - type: checkboxes
+    id: readonly
+    attributes:
+      label: Fits the project rules
+      options:
+        - label: This does not need FirstPR to write to GitHub
+          required: true
