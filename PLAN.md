@@ -55,10 +55,12 @@ watchlist ──► discover ──► fetch ──► normalise ──► enric
 | 9 | Fonts are bundled with the app, not loaded from Google | [0009](docs/adr/0009-self-hosted-fonts.md) |
 | 10 | Frontend dependencies are added in the milestone that uses them | [0010](docs/adr/0010-staged-frontend-dependencies.md) |
 | 11 | Plain `venv` + `pip`, `hatchling` build backend | [0011](docs/adr/0011-python-tooling.md) |
+| 12 | Sync open lists with ETags instead of `updated:>=` search | [0012](docs/adr/0012-etag-list-sync.md) |
+| 13 | PR references are strong (closing keywords) or weak (mentions); bot PR bodies skipped | [0013](docs/adr/0013-weak-and-strong-pr-references.md) |
 
 ## Milestones
 
-Status: **M0 in review.** Everything after it is planned, not built.
+Status: **M0 done (merged). M1 in review.** Everything after M1 is planned, not built.
 
 ### M0. Scaffold
 
@@ -72,7 +74,7 @@ Done when:
 
 - [x] A fresh clone installs and starts with the documented PowerShell commands.
 - [x] Demo fixtures load in the CLI (`firstpr demo`) and in the web shell.
-- [ ] CI is green on GitHub (needs Actions enabled on the repo; see [`docs/human-tasks.md`](docs/human-tasks.md)).
+- [x] CI is green on GitHub.
 
 ### M1. GitHub client, budgeter, storage
 
@@ -83,12 +85,13 @@ watchlist sync with `updated:>=` incremental fetch, fixture recorder.
 
 Done when:
 
-- A sync of a watchlist works with a real token.
-- A second run uses ETag caching and measurably fewer requests; the difference
+- [ ] A sync of a watchlist works with a real token. (Works through the build
+  container's GitHub access; still to run with your personal token.)
+- [x] A second run uses ETag caching and measurably fewer requests; the difference
   and the conditional-request measurement are written to `RESULTS.md`.
-- A test simulates quota exhaustion mid-sync; the next run resumes with no data loss.
-- GraphQL errors inside HTTP 200 responses are handled and tested.
-- A test proves the client rejects every non-GET REST method and any GraphQL mutation.
+- [x] A test simulates quota exhaustion mid-sync; the next run resumes with no data loss.
+- [x] GraphQL errors inside HTTP 200 responses are handled and tested.
+- [x] A test proves the client rejects every non-GET REST method and any GraphQL mutation.
 
 ### M2. Engines and evaluation
 

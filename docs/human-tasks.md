@@ -4,9 +4,16 @@ Keep this list current. Tick items when done.
 
 ## Now (M0 to M1)
 
-- [ ] **Enable GitHub Actions** on `MuskanScripts/IssueRadar` (Settings, Actions, General) so CI runs.
-- [ ] **Merge the M0 branch** into `main` after review.
-- [ ] **Create a read-only token** for M1 (steps below) and keep it out of the repository.
+- [x] **Enable GitHub Actions** on `MuskanScripts/IssueRadar`.
+- [x] **Merge the M0 branch** into `main` after review.
+- [ ] **Create a read-only token** (steps below) and keep it out of the repository.
+- [ ] **Run the M1 measurements with your own token** and add the rows to `RESULTS.md`:
+  `firstpr doctor --measure-etag modelcontextprotocol/python-sdk`, then add about 25 repos with
+  `firstpr watch add ...` and run `firstpr sync` twice.
+- [ ] **Record a few more real fixtures** with `python scripts/record_fixtures.py owner/repo`
+  (repos with real issues and human PRs), so M2 tests use more than one repo.
+- [ ] **Close Dependabot PRs #12 and #13** (React 19). The project is on React 18; Dependabot is
+  now told to skip React major versions.
 - [ ] **Edit `examples/skills.yaml`** to match your real skills, then copy it to `skills.yaml`.
 - [ ] **Choose delivery channels** for the digest (RSS and Markdown come first; then email, Telegram, Discord or Slack).
 
