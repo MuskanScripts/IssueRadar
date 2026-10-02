@@ -250,6 +250,8 @@ class RankingSettings(_Strict):
 
 class PullRequestSettings(_Strict):
     stale_days: int = Field(ge=1)
+    track_days: int = Field(ge=1)
+    unreviewed_warning_at: int = Field(ge=1)
 
 
 class MarkdownChannel(_Strict):
