@@ -25,10 +25,9 @@ flowchart LR
 | Stage | What it does | Milestone |
 | --- | --- | --- |
 | Discover and fetch | Per repo: repo, open issues, open PRs, with ETags and a stable sort (ADR 0012) | M1, built |
-| Finalists | Search `-linked:pr`; GraphQL batches for comments and timelines | M2 |
+| Enrich | One `linked:pr` search per repo; comments and timelines for finalists; repo health inputs (ADR 0014) | M2, built |
+| Score and rank | Engines run on stored data when asked (ADR 0015) | M2, built |
 | Normalise | Store repos, issues, signals and PRs with `user_id` on personal tables | M1 |
-| Enrich | Availability, difficulty, repo health, stack matching | M2 |
-| Score and rank | Weighted formulas from config, each with a "why" list | M2 |
 | Deliver | Digest renderers and channels | M3 |
 
 ## Interfaces
@@ -37,7 +36,7 @@ All of these are thin shells over the same core package.
 
 | Interface | Exists today |
 | --- | --- |
-| CLI (`firstpr`) | `--version`, `doctor` (with `--measure-etag`), `demo`, `watch add/remove/list`, `sync` |
+| CLI (`firstpr`) | `--version`, `doctor` (with `--measure-etag`), `demo`, `watch add/remove/list`, `sync`, `find`, `explain`, `eval sample/run`, `pack list/add/verify` |
 | FastAPI server | M5 |
 | React dashboard (`web/`) | Shell that renders demo data with the design tokens |
 | Scheduled GitHub Action | M6 |
@@ -66,6 +65,12 @@ src/issueradar/
   storage/migrations/      Alembic migrations, applied automatically
   sync/service.py          watchlist sync, per-repo transactions, resume
   sync/normalize.py        GitHub JSON to table fields, PR references
+  sync/enrich.py           linked:pr search, finalist comments and timelines, health inputs
+  sync/single.py           fetch one issue on demand for explain
+  engine/                  availability, difficulty, health, stack, ranking, rules
+  radar.py                 builds engine inputs from the database; find and explain
+  evaluation.py            precision, recall and tier accuracy against your labels
+  presets/                 repo rules and starter packs (YAML)
   demo/loader.py           demo dataset schema and loader
   demo/fixtures/demo.json  demo data
 web/src/

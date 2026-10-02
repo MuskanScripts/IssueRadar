@@ -1,0 +1,10 @@
+# Unverified: the brief says this repo appears to accept changes by importing
+# them with a bot and then closing the PR. Confirm on real closed PRs before
+# trusting the accepted-by-bot rule.
+repo: google/adk-python
+accepted_by_bot:
+  label: "ready to pull"
+  closing_comment_contains: "imported"
+notes: >
+  Accepted PRs may be closed instead of merged after an internal import.
+  They are counted as accepted, not rejected.

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import json
 import logging
 import re
@@ -118,6 +119,7 @@ class GitHubClient:
             follow_redirects=True,  # renamed and transferred repositories redirect
         )
         self._semaphore = asyncio.Semaphore(settings.concurrency.max_in_flight)
+        self._search_times: collections.deque[float] = collections.deque()
 
     async def __aenter__(self) -> GitHubClient:
         return self
@@ -248,6 +250,8 @@ class GitHubClient:
         retry = self.settings.retry
         for attempt in range(retry.max_retries + 1):
             self.budget.check(resource)
+            if resource == "search":
+                await self._pace_search()
             async with self._semaphore:
                 started = self._clock()
                 response = await self._http.request(method, url, headers=headers, json=json_body)
@@ -293,6 +297,23 @@ class GitHubClient:
                 continue
             raise GitHubHTTPError(status, _message(response), url)
         raise GitHubHTTPError(0, "retries exhausted", url)  # pragma: no cover
+
+    async def _pace_search(self) -> None:
+        """Keep search under its per-minute limit (30 when authenticated)."""
+        limit = (
+            self.settings.search.requests_per_minute
+            if self.authenticated
+            else self.settings.search.unauthenticated_requests_per_minute
+        )
+        now = self._clock()
+        while self._search_times and now - self._search_times[0] >= 60:
+            self._search_times.popleft()
+        if len(self._search_times) >= limit:
+            wait = 60 - (now - self._search_times[0])
+            log.info("pausing %.1fs to stay under the search limit", wait)
+            await self._sleep(wait)
+            self._search_times.popleft()
+        self._search_times.append(self._clock())
 
     def _secondary_wait(self, headers: Mapping[str, str], attempt: int) -> float:
         """Wait time for a secondary limit, following GitHub's documented order."""

@@ -20,6 +20,13 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def as_utc(value: datetime | None) -> datetime | None:
+    """SQLite returns naive datetimes; everything we store is UTC."""
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=UTC)
+
+
 class Base(DeclarativeBase):
     type_annotation_map = {  # noqa: RUF012 (SQLAlchemy reads this class attribute)
         dict[str, Any]: JSON,
@@ -54,6 +61,13 @@ class Repo(Base):
     gh_updated_at: Mapped[datetime | None]
     last_synced_at: Mapped[datetime | None]
     sync_error: Mapped[str | None] = mapped_column(Text)
+    # Enrichment (M2): stack, contributor docs and the cached health result.
+    languages: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    frameworks: Mapped[list[Any]] = mapped_column(default=list)
+    community: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    contributing_text: Mapped[str | None] = mapped_column(Text)
+    health: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    health_computed_at: Mapped[datetime | None]
 
     issues: Mapped[list[Issue]] = relationship(back_populates="repo")
 
@@ -82,6 +96,10 @@ class Issue(Base):
     gh_updated_at: Mapped[datetime | None]
     closed_at: Mapped[datetime | None]
     last_seen_open_at: Mapped[datetime | None]
+    # Enrichment (M2). None means "not checked".
+    linked_pr: Mapped[bool | None]
+    comments_fetched_for: Mapped[datetime | None]  # gh_updated_at when comments were read
+    timeline_checked_at: Mapped[datetime | None]
 
     repo: Mapped[Repo] = relationship(back_populates="issues")
 
@@ -117,6 +135,8 @@ class PullRequest(Base):
     draft: Mapped[bool] = mapped_column(default=False)
     author_login: Mapped[str | None] = mapped_column(String(100))
     author_association: Mapped[str | None] = mapped_column(String(40))
+    author_is_bot: Mapped[bool] = mapped_column(default=False)
+    labels: Mapped[list[Any]] = mapped_column(default=list)
     html_url: Mapped[str | None] = mapped_column(String(500))
     closing_issues: Mapped[list[Any]] = mapped_column(default=list)  # "fixes #12": strong
     mentioned_issues: Mapped[list[Any]] = mapped_column(default=list)  # any other "#12": weak

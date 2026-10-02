@@ -1,0 +1,17 @@
+# Source: the MCP Python SDK's contributing docs, as summarised in the project
+# brief. Re-check them before relying on this preset.
+repo: modelcontextprotocol/python-sdk
+label_tiers:
+  "good first issue": beginner     # for newcomers
+  "help wanted": intermediate      # for experienced contributors
+maintainer_only_labels:
+  - "ready for work"               # for maintainers
+not_ready_labels:
+  - "needs confirmation"
+  - "needs maintainer action"
+issue_required_before_pr: true     # unless the change is trivial
+discussion_first_keywords:
+  - "spec"                         # spec-level changes need a proposal first
+notes: >
+  Every PR needs an issue first unless the change is trivial. Spec-level
+  changes need a proposal first.

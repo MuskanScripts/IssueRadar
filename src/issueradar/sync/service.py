@@ -26,6 +26,7 @@ from issueradar.config.settings import Settings
 from issueradar.github.budget import BudgetSummary
 from issueradar.github.client import GitHubClient
 from issueradar.github.errors import GitHubError, Gone, QuotaExhausted
+from issueradar.radar import Radar
 from issueradar.storage.db import Database
 from issueradar.storage.models import (
     LOCAL_USER_ID,
@@ -36,6 +37,7 @@ from issueradar.storage.models import (
     Watchlist,
     utcnow,
 )
+from issueradar.sync.enrich import Enricher
 from issueradar.sync.normalize import (
     is_pull_request,
     issue_fields,
@@ -53,6 +55,8 @@ class RepoOutcome:
     open_issues: int = 0
     open_pull_requests: int = 0
     note: str | None = None
+    finalists: int = 0
+    health: int | None = None
 
 
 @dataclass
@@ -80,12 +84,16 @@ class SyncService:
         *,
         user_id: int = LOCAL_USER_ID,
         clock: Callable[[], datetime] = utcnow,
+        enricher: Enricher | None = None,
+        radar: Radar | None = None,
     ) -> None:
         self.db = db
         self.client = client
         self.settings = settings
         self.user_id = user_id
         self.clock = clock
+        self.enricher = enricher
+        self.radar = radar
 
     async def run(self) -> SyncReport:
         run_id, todo, resumed = self._start_run()
@@ -96,6 +104,8 @@ class SyncService:
         for full_name in todo:
             try:
                 outcome = await self._sync_repo(full_name)
+                if outcome.status == "synced":
+                    await self._enrich(outcome)
             except QuotaExhausted as exc:
                 report.status = "interrupted"
                 report.message = str(exc)
@@ -115,6 +125,16 @@ class SyncService:
         )
         report.budget = summary
         return report
+
+    async def _enrich(self, outcome: RepoOutcome) -> None:
+        if self.enricher is not None:
+            extra = await self.enricher.enrich_repo(outcome.full_name)
+            outcome.finalists = extra.finalists
+            outcome.health = extra.health_score
+            if extra.notes:
+                outcome.note = "; ".join(filter(None, [outcome.note, *extra.notes]))
+        if self.radar is not None:
+            self.radar.snapshot_repo(outcome.full_name, self.user_id)
 
     # ---------------------------------------------------------------- runs
 

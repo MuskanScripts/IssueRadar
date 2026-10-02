@@ -57,10 +57,12 @@ watchlist ──► discover ──► fetch ──► normalise ──► enric
 | 11 | Plain `venv` + `pip`, `hatchling` build backend | [0011](docs/adr/0011-python-tooling.md) |
 | 12 | Sync open lists with ETags instead of `updated:>=` search | [0012](docs/adr/0012-etag-list-sync.md) |
 | 13 | PR references are strong (closing keywords) or weak (mentions); bot PR bodies skipped | [0013](docs/adr/0013-weak-and-strong-pr-references.md) |
+| 14 | Enrich finalists only, over REST (GraphQL batching later) | [0014](docs/adr/0014-finalist-enrichment-over-rest.md) |
+| 15 | Score at query time; keep snapshots for history | [0015](docs/adr/0015-score-at-query-time.md) |
 
 ## Milestones
 
-Status: **M0 done (merged). M1 in review.** Everything after M1 is planned, not built.
+Status: **M0 done (merged). M1 and M2 in review.** Everything after M2 is planned, not built.
 
 ### M0. Scaffold
 
@@ -101,9 +103,13 @@ health, stack matching, ranking, per-repo rules and starter packs,
 `firstpr explain <issue-url>`, evaluation harness and labelling CSV template,
 `docs/scoring.md`.
 
-Done when: one command prints precision and recall for FREE detection and tier
-accuracy; `explain` shows the "why" for availability, tier and health; claim
-detection has unit tests including maintainer-invitation false positives.
+Done when:
+
+- [x] One command prints precision and recall for FREE detection and tier
+  accuracy (`firstpr eval run`). Real numbers wait on hand-labelled issues.
+- [x] `explain` shows the "why" for availability, tier and health.
+- [x] Claim detection has unit tests, including maintainer-invitation false positives.
+- [ ] Starter packs verified with `firstpr pack verify` (needs a personal token).
 
 ### M3. CLI and digest
 

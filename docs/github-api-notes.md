@@ -176,6 +176,16 @@ whether a fine-grained token with no extra permissions can run
 - A classic PAT "with no assigned scopes can only access public information". Verified (docs). Acceptable fallback.
 - `GITHUB_TOKEN` is an installation token whose "permissions are limited to the repository that contains your workflow". Verified (docs, `content/actions/concepts/security/github_token.md`). **Not stated:** whether it can read other repositories' public data. Irrelevant for the template, because its 1,000-per-hour-per-repo budget is too small anyway; the template uses a PAT secret (ADR 0006). To measure in M6 for the record.
 
+## 9b. Observed on real data (M2)
+
+- `GET /repos/{o}/{r}/community/profile` returned `issue_template: null` for a
+  repo that has YAML issue forms in `.github/ISSUE_TEMPLATE/`. IssueRadar
+  checks that folder when the profile says no.
+- `GET /repos/{o}/{r}/contents/` with a trailing slash returned 400 ("Request
+  path could not be canonicalized"); `/contents` without it works.
+- Search and GraphQL were blocked by the build environment's proxy, so the
+  `linked:pr` search shape is taken from the docs and tested with fixtures.
+
 ## 10. Still to verify
 
 | Item | When | How |
