@@ -30,30 +30,47 @@ def main() -> None:
     now = datetime.now(UTC)
     with db.sessions.begin() as session:
         for r in range(repos):
-            repo = Repo(full_name=f"bench/repo{r}", github_id=r + 1, language="Python",
-                        pushed_at=now, health={"score": 60 + r % 30, "reasons": [], "flags": {}})
+            repo = Repo(
+                full_name=f"bench/repo{r}",
+                github_id=r + 1,
+                language="Python",
+                pushed_at=now,
+                health={"score": 60 + r % 30, "reasons": [], "flags": {}},
+            )
             session.add(repo)
             session.add(Watchlist(user_id=1, repo_full_name=repo.full_name))
             session.flush()
             for n in range(per_repo):
-                session.add(Issue(
-                    github_id=r * 100_000 + n, repo_id=repo.id, number=n + 1,
-                    title=f"Fix typo in docs page {n}" if n % 3 == 0 else f"Crash when parsing {n}",
-                    body="Steps to reproduce: run it.\n" + "x" * (n * 7 % 2000),
-                    state="open", labels=["good first issue"] if n % 4 == 0 else ["bug"],
-                    assignees=[], comments_count=0, locked=False,
-                    gh_created_at=now - timedelta(days=n % 90),
-                    gh_updated_at=now - timedelta(days=n % 30), timeline_checked_at=now,
-                    linked_pr=False,
-                ))
+                session.add(
+                    Issue(
+                        github_id=r * 100_000 + n,
+                        repo_id=repo.id,
+                        number=n + 1,
+                        title=f"Fix typo in docs page {n}"
+                        if n % 3 == 0
+                        else f"Crash when parsing {n}",
+                        body="Steps to reproduce: run it.\n" + "x" * (n * 7 % 2000),
+                        state="open",
+                        labels=["good first issue"] if n % 4 == 0 else ["bug"],
+                        assignees=[],
+                        comments_count=0,
+                        locked=False,
+                        gh_created_at=now - timedelta(days=n % 90),
+                        gh_updated_at=now - timedelta(days=n % 30),
+                        timeline_checked_at=now,
+                        linked_pr=False,
+                    )
+                )
     settings = load_settings()
     radar = Radar(db, settings, load_rules(), None)
     start = time.perf_counter()
     digest = DigestBuilder(db, settings, radar).build()
     elapsed = time.perf_counter() - start
     print(f"{repos} repos x {per_repo} issues = {repos * per_repo} open issues")
-    print(f"digest built in {elapsed:.2f} s ({len(digest.free)} free items, "
-          f"{len(digest.new_since)} new)")
+    print(
+        f"digest built in {elapsed:.2f} s ({len(digest.free)} free items, "
+        f"{len(digest.new_since)} new)"
+    )
 
 
 if __name__ == "__main__":
