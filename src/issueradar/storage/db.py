@@ -67,9 +67,18 @@ def open_database(url: str) -> Database:
     engine = create_engine(url)
     _sqlite_pragmas(engine)
     config = _alembic_config(url)
-    with engine.begin() as connection:
+    with engine.connect() as connection:
+        sqlite = engine.dialect.name == "sqlite"
+        if sqlite:
+            # SQLite migrations rebuild tables. With foreign keys on, rebuilding a
+            # parent table cascades deletes into its children, so switch them off
+            # while migrating (as SQLite's docs recommend) and back on after.
+            connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
         config.attributes["connection"] = connection
         command.upgrade(config, "head")
+        connection.commit()
+        if sqlite:
+            connection.exec_driver_sql("PRAGMA foreign_keys=ON")
     sessions = sessionmaker(engine, expire_on_commit=False)
     with sessions.begin() as session:
         if session.scalar(select(User).where(User.id == LOCAL_USER_ID)) is None:

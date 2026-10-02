@@ -230,3 +230,16 @@ async def test_graphql_timeout(settings: Settings) -> None:
     async with client_for(settings, fake) as client:
         with pytest.raises(GraphQLTimeout):
             await client.graphql(QUERY)
+
+
+async def test_search_is_paced_per_minute(settings: Settings, fake_sleep: FakeSleep) -> None:
+    fake = FakeGitHub()
+    fake.add("/search/issues?q=x", {"total_count": 0, "incomplete_results": False, "items": []})
+    clock = [1000.0]
+    async with GitHubClient(
+        settings.github, "t", transport=fake.transport(), sleep=fake_sleep, clock=lambda: clock[0]
+    ) as client:
+        for _ in range(31):
+            await client.get("/search/issues", params={"q": "x"}, conditional=False)
+    assert len(fake_sleep.waits) == 1  # the 31st search in the same minute waited
+    assert fake_sleep.waits[0] == 60.0

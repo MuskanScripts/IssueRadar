@@ -43,6 +43,7 @@ def example_issue(number: int, *, title: str = "Example issue", **changes: Any) 
         assignees=[],
         assignee=None,
         labels=[],
+        locked=False,  # the documented example is locked
     )
     base.update(changes)
     return base
