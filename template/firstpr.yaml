@@ -1,0 +1,32 @@
+# Your settings. Anything you leave out uses the defaults:
+# https://github.com/MuskanScripts/IssueRadar/blob/main/src/issueradar/config/defaults.yaml
+
+digest:
+  top_n: 5
+  channels:
+    markdown:
+      enabled: true
+    rss:
+      enabled: true
+    # Turn on the ones you want, then add the matching secret in
+    # Settings > Secrets and variables > Actions.
+    email:
+      enabled: false
+      smtp_host: ""          # for example smtp.gmail.com
+      username: ""
+      sender: ""
+      recipient: ""
+      # password comes from the FIRSTPR_SMTP_PASSWORD secret
+    telegram:
+      enabled: false
+      chat_id: ""
+      # bot token comes from the FIRSTPR_TELEGRAM_TOKEN secret
+    discord:
+      enabled: false
+      # webhook URL comes from the FIRSTPR_DISCORD_WEBHOOK secret
+    slack:
+      enabled: false
+      # webhook URL comes from the FIRSTPR_SLACK_WEBHOOK secret
+
+pull_requests:
+  stale_days: 7

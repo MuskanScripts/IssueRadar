@@ -1,0 +1,5 @@
+# One repository per line: owner/name or a GitHub URL.
+# Lines starting with # are ignored. Removing a line stops watching that repo.
+# Pick projects you use or would like to learn from. Five to twenty is a good start.
+
+modelcontextprotocol/python-sdk
