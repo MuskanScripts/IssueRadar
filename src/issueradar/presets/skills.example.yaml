@@ -1,0 +1,33 @@
+# EDIT ME. This is a draft skill profile, guessed from the project brief.
+# Copy it next to your config (it is git-ignored there) and change it to match you:
+#
+#   firstpr init   (or copy this file to skills.yaml)
+#
+# Levels: learning, medium, strong.
+# By default FirstPR shows Beginner issues where you are learning or medium,
+# and Intermediate issues where you are strong. Turn on "stretch" to move
+# everything up one tier.
+
+stretch: false
+
+languages:
+  python: strong
+  java: medium
+  typescript: learning
+  go: learning
+
+frameworks:
+  spring: medium
+  fastapi: medium
+  react: learning
+  pytest: strong
+
+domains:
+  # Matched against GitHub topics on each repository.
+  agents-and-mcp: medium
+  web: learning
+  devops: learning
+  data: medium
+
+# Issue types you enjoy most get a small ranking boost (M2).
+prefer_issue_types: [bug, tests, docs]

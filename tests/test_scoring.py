@@ -284,3 +284,20 @@ def test_why_line_is_human(settings: Settings) -> None:
     result = ranking.score(rank_inputs(), settings.ranking, NOW)
     assert result is not None
     assert result.why.startswith("Beginner matches your level")
+
+
+def test_coach_checklist() -> None:
+    from issueradar.engine.coach import checklist
+
+    plain = checklist("o/r", {}, discussion_first=False)
+    assert plain[0].startswith("Read o/r's CONTRIBUTING")
+    assert "One issue per pull request." in plain
+    strict = checklist(
+        "o/r",
+        {"issue_required": True, "cla": True, "dco": True},
+        discussion_first=True,
+        open_unreviewed_prs=3,
+    )
+    text = " ".join(strict)
+    assert "wants an issue first" in text and "CLA" in text and "git commit -s" in text
+    assert "3 open PRs waiting" in text
