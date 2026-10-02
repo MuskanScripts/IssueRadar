@@ -276,6 +276,13 @@ def create_app(
             raise HTTPException(404, f"{repo}#{number} is not in the database. Sync it first.")
         return report
 
+    @app.get("/api/health")
+    def health() -> dict[str, str]:
+        """For container health checks: the API is up and the database answers."""
+        with db.sessions() as session:
+            session.execute(select(func.count()).select_from(Watchlist))
+        return {"status": "ok", "version": __version__}
+
     @app.get("/api/meta", response_model=Meta)
     def meta() -> Meta:
         return Meta(

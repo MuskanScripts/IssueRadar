@@ -53,6 +53,28 @@ def test_watch_add_list_remove() -> None:
     assert "Stopped watching a/b." in removed.stdout
 
 
+def test_watch_add_from_file(tmp_path: Path) -> None:
+    listing = tmp_path / "watchlist.txt"
+    listing.write_text(
+        "# repos I like\noctocat/Hello-World\n\nhttps://github.com/a/b  # trailing note\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["watch", "add", "--file", str(listing)])
+    assert result.exit_code == 0, result.stdout
+    assert "Watching octocat/Hello-World." in result.stdout
+    assert "Watching a/b." in result.stdout
+
+    listing.write_text("a/b\n", encoding="utf-8")
+    exact = runner.invoke(app, ["watch", "add", "--file", str(listing), "--exact"])
+    assert "Stopped watching octocat/Hello-World." in exact.stdout
+    assert runner.invoke(app, ["watch", "list"]).stdout.split() == ["a/b"]
+
+
+def test_watch_add_needs_something() -> None:
+    assert runner.invoke(app, ["watch", "add"]).exit_code == 2
+    assert runner.invoke(app, ["watch", "add", "--file", "missing.txt"]).exit_code == 2
+
+
 def test_watch_rejects_bad_names() -> None:
     result = runner.invoke(app, ["watch", "add", "not-a-repo"])
     assert result.exit_code == 2

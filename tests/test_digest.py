@@ -274,3 +274,23 @@ async def test_export(
     assert result.exit_code == 0, result.stdout
     data = json.loads(out.read_text("utf-8"))
     assert data["watchlist"] == [REPO] and len(data["issues"]) == 9
+
+
+async def test_digest_writes_github_step_summary(
+    db: Database, synced: FakeGitHub, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FIRSTPR_DB_URL", db.url)
+    monkeypatch.chdir(tmp_path)
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    result = CliRunner().invoke(app, ["digest", "--send"])
+    assert result.exit_code == 0, result.stdout
+    assert "## Free for you" in summary.read_text("utf-8")
+
+
+def test_daily_runs_every_step_and_reports_problems() -> None:
+    result = CliRunner().invoke(app, ["daily", "--skip-prs"])
+    out = " ".join(result.stdout.split())
+    assert "Sync" in out and "Digest" in out
+    assert result.exit_code == 1  # nothing is watched yet, so sync reports a problem
+    assert "Finished with problems in: Sync" in out

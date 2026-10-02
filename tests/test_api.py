@@ -16,6 +16,10 @@ def client(db: Database, settings: Settings, **kw: object) -> TestClient:
     return TestClient(create_app(db, settings, load_rules(), **kw))  # type: ignore[arg-type]
 
 
+def test_health(db: Database, settings: Settings) -> None:
+    assert client(db, settings).get("/api/health").json()["status"] == "ok"
+
+
 def test_meta_and_openapi(db: Database, settings: Settings) -> None:
     c = client(db, settings, demo=True)
     meta = c.get("/api/meta").json()
