@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from importlib.resources import files
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -101,21 +101,83 @@ class SyncSettings(_Strict):
     scan_open_pull_requests: bool
 
 
+class EnrichSettings(_Strict):
+    max_issues_per_repo: int = Field(ge=0, le=500)
+    fetch_timeline: bool
+    linked_pr_search: bool
+    repo_health: bool
+
+
 class AvailabilitySettings(_Strict):
     stale_claim_days: int = Field(ge=1)
     maintainer_associations: list[str]
     claim_patterns: list[str]
+    release_patterns: list[str]
     invitation_patterns: list[str]
+    not_ready_labels: list[str]
+    non_english_ascii_ratio: float = Field(ge=0, le=1)
+    non_english_min_words: int = Field(ge=1)
+    non_english_stopword_ratio: float = Field(ge=0, le=1)
+
+
+Tier = Literal["beginner", "intermediate", "pro"]
+
+
+class DifficultyAdjustments(_Strict):
+    docs_or_typo: int
+    tests_only: int
+    code_or_repro: int
+    names_a_file: int
+    short_body: int
+    long_body: int
+    many_comments: int
+    per_linked_issue: int
+    max_linked_issues: int = Field(ge=0)
+    discussion_first: int
+    performance_or_concurrency: int
+    security: int
+
+
+class TimeBuckets(_Strict):
+    under_an_hour: int = Field(ge=0, le=100)
+    half_a_day: int = Field(ge=0, le=100)
+    a_weekend: int = Field(ge=0, le=100)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> TimeBuckets:
+        if not self.under_an_hour < self.half_a_day < self.a_weekend:
+            raise ValueError("need under_an_hour < half_a_day < a_weekend")
+        return self
+
+
+class DifficultyKeywords(_Strict):
+    docs_or_typo: list[str]
+    tests_only: list[str]
+    discussion_first: list[str]
+    performance_or_concurrency: list[str]
+    security: list[str]
+    repro: list[str]
 
 
 class DifficultySettings(_Strict):
     beginner_max: int = Field(ge=0, le=100)
     intermediate_max: int = Field(ge=0, le=100)
+    base_score: int = Field(ge=0, le=100)
+    tier_anchor: dict[Tier, int]
+    label_tiers: dict[str, Tier]
+    adjustments: DifficultyAdjustments
+    short_body_chars: int = Field(ge=0)
+    long_body_chars: int = Field(ge=0)
+    many_comments: int = Field(ge=1)
+    time_buckets: TimeBuckets
+    keywords: DifficultyKeywords
 
     @model_validator(mode="after")
     def _ordered(self) -> DifficultySettings:
         if not self.beginner_max < self.intermediate_max < 100:
             raise ValueError("need beginner_max < intermediate_max < 100")
+        if set(self.tier_anchor) != {"beginner", "intermediate", "pro"}:
+            raise ValueError("tier_anchor needs beginner, intermediate and pro")
         return self
 
 
@@ -137,6 +199,32 @@ class HealthWeights(_Strict):
 class HealthSettings(_Strict):
     cache_hours: int = Field(ge=1)
     weights: HealthWeights
+    response_days_good: float = Field(ge=0)
+    response_days_bad: float = Field(gt=0)
+    commit_days_good: float = Field(ge=0)
+    commit_days_bad: float = Field(gt=0)
+    backlog_good: int = Field(ge=0)
+    backlog_bad: int = Field(gt=0)
+    min_samples: int = Field(ge=1)
+    closed_prs_sample: int = Field(ge=1, le=100)
+
+    @model_validator(mode="after")
+    def _ranges(self) -> HealthSettings:
+        for good, bad in (
+            ("response_days_good", "response_days_bad"),
+            ("commit_days_good", "commit_days_bad"),
+            ("backlog_good", "backlog_bad"),
+        ):
+            if getattr(self, good) >= getattr(self, bad):
+                raise ValueError(f"{good} must be smaller than {bad}")
+        return self
+
+
+class StackSettings(_Strict):
+    extensions: dict[str, str]
+    frameworks: dict[str, list[str]]
+    domains: dict[str, list[str]]
+    manifests: list[str]
 
 
 class RankingWeights(_Strict):
@@ -156,6 +244,8 @@ class RankingWeights(_Strict):
 
 class RankingSettings(_Strict):
     weights: RankingWeights
+    freshness_half_life_days: float = Field(gt=0)
+    competition_comments: int = Field(ge=1)
 
 
 class PullRequestSettings(_Strict):
@@ -170,9 +260,11 @@ class Settings(_Strict):
     github: GitHubSettings
     storage: StorageSettings
     sync: SyncSettings
+    enrich: EnrichSettings
     availability: AvailabilitySettings
     difficulty: DifficultySettings
     health: HealthSettings
+    stack: StackSettings
     ranking: RankingSettings
     pull_requests: PullRequestSettings
     digest: DigestSettings

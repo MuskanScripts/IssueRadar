@@ -1,0 +1,8 @@
+name: Python tooling
+description: Tools Python developers use every day.
+verified: false
+repos:
+  - pytest-dev/pytest
+  - pypa/pip
+  - python-poetry/poetry
+  - astral-sh/ruff

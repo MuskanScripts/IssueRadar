@@ -62,34 +62,118 @@ sync:
   max_pages_per_list: 10   # 10 pages x 100 = up to 1,000 open issues or PRs per repo
   scan_open_pull_requests: true
 
+enrich:
+  # Finalists per repo: open issues with no assignee and no closing PR, most
+  # recently updated first. Only these get their comments and timeline fetched.
+  max_issues_per_repo: 30
+  fetch_timeline: true
+  linked_pr_search: true      # one search per repo: is:issue is:open linked:pr
+  repo_health: true
+
 availability:
   stale_claim_days: 14
   maintainer_associations: [OWNER, MEMBER, COLLABORATOR]
+  # Lowercase phrases. A comment matches if it contains the phrase.
   claim_patterns:
     - "can i work on this"
+    - "can i work on it"
     - "can i take this"
+    - "can i take it"
     - "could i work on this"
     - "may i work on this"
     - "i'll take this"
     - "i will take this"
     - "i'd like to work on this"
     - "i would like to work on this"
+    - "i want to work on this"
+    - "i'm working on this"
+    - "i am working on this"
     - "working on this"
     - "picking this up"
     - "assign me"
     - "assign this to me"
     - "/assign"
-  invitation_patterns:
+    - "/take"
+  release_patterns:           # the claimer giving it back
+    - "no longer working on"
+    - "not working on this anymore"
+    - "can't work on this"
+    - "cannot work on this"
+    - "unassign me"
+    - "feel free to take it"
+  invitation_patterns:        # maintainers inviting work: a positive signal, not a claim
     - "feel free to take this"
     - "feel free to pick this up"
+    - "feel free to work on this"
     - "contributions welcome"
     - "a pr is welcome"
     - "pr welcome"
+    - "prs welcome"
     - "happy to accept a pr"
+    - "happy to review a pr"
+  not_ready_labels:           # added to each repo's own list
+    - "needs triage"
+    - "needs confirmation"
+    - "needs maintainer action"
+    - "needs-triage"
+    - "blocked"
+    - "on hold"
+    - "wontfix"
+    - "won't fix"
+    - "duplicate"
+    - "invalid"
+    - "question"
+  non_english_ascii_ratio: 0.7    # below this share of ASCII letters: not English
+  non_english_min_words: 25       # with at least this many words...
+  non_english_stopword_ratio: 0.04  # ...and fewer English stopwords than this share
 
 difficulty:
   beginner_max: 33        # 0-33 Beginner
   intermediate_max: 66    # 34-66 Intermediate, 67-100 Pro
+  base_score: 45          # starting point when no label says anything
+  tier_anchor:            # starting point when a label maps to a tier
+    beginner: 15
+    intermediate: 50
+    pro: 80
+  label_tiers:            # default label map; per-repo rules override it
+    "good first issue": beginner
+    "good-first-issue": beginner
+    "first-timers-only": beginner
+    "beginner": beginner
+    "easy": beginner
+    "starter": beginner
+    "help wanted": intermediate
+    "help-wanted": intermediate
+    "medium": intermediate
+    "hard": pro
+    "complex": pro
+  adjustments:            # points added to the score when the signal is present
+    docs_or_typo: -15
+    tests_only: -10
+    code_or_repro: -5
+    names_a_file: -5
+    short_body: -5
+    long_body: 10
+    many_comments: 10
+    per_linked_issue: 5
+    max_linked_issues: 3
+    discussion_first: 20
+    performance_or_concurrency: 15
+    security: 10
+  short_body_chars: 400
+  long_body_chars: 3000
+  many_comments: 10
+  time_buckets:           # upper score bound for each estimate
+    under_an_hour: 20
+    half_a_day: 45
+    a_weekend: 70         # above this: a week or more
+  keywords:
+    docs_or_typo: [typo, spelling, "broken link", "dead link", docs, documentation, readme, docstring, grammar]
+    tests_only: ["add test", "add a test", "missing test", "test coverage", "unit test", "write tests"]
+    discussion_first: ["needs proposal", "needs a proposal", "discuss first", "design doc", "rfc", "needs discussion", "proposal first"]
+    performance_or_concurrency: [performance, slow, latency, memory leak, "race condition", deadlock, concurrency, concurrent, thread-safe, "thread safe", async, parallel]
+    security: [security, vulnerability, cve, xss, injection, "auth bypass"]
+    repro: ["steps to reproduce", "to reproduce", "repro", "minimal example", "traceback", "stack trace"]
 
 health:
   cache_hours: 24
@@ -99,6 +183,56 @@ health:
     recent_commit: 20
     pr_backlog: 10
     contributor_docs: 10
+  response_days_good: 2      # median first maintainer reply at or under this: full points
+  response_days_bad: 30      # at or over this: zero, linear in between
+  commit_days_good: 7
+  commit_days_bad: 180
+  backlog_good: 10           # open PRs at or under this: full points
+  backlog_bad: 100
+  min_samples: 3             # fewer data points than this: metric unknown, scored 0.5
+  closed_prs_sample: 100     # recent closed PRs used for the merge rate
+
+stack:
+  extensions:
+    ".py": python
+    ".ts": typescript
+    ".tsx": typescript
+    ".js": javascript
+    ".jsx": javascript
+    ".java": java
+    ".kt": kotlin
+    ".go": go
+    ".rs": rust
+    ".rb": ruby
+    ".cs": csharp
+    ".cpp": cpp
+    ".c": c
+    ".php": php
+    ".swift": swift
+  frameworks:              # framework -> dependency names that reveal it
+    react: [react, react-dom]
+    vue: [vue]
+    angular: ["@angular/core"]
+    nextjs: [next]
+    svelte: [svelte]
+    django: [django]
+    fastapi: [fastapi]
+    flask: [flask]
+    pydantic: [pydantic]
+    pytest: [pytest]
+    spring: [spring-boot, spring-core, spring-boot-starter, org.springframework.boot, org.springframework]
+    junit: [junit, junit-jupiter, org.junit.jupiter]
+    express: [express]
+    pytorch: [torch]
+    tensorflow: [tensorflow]
+  domains:                 # domain -> GitHub topics that reveal it
+    agents-and-mcp: [mcp, model-context-protocol, agents, ai-agents, agent, llm, llms]
+    web: [web, frontend, react, vue, javascript, typescript, css]
+    devops: [devops, kubernetes, docker, ci, infrastructure, terraform]
+    data: [data, etl, pandas, analytics, database, sql]
+    ml: [machine-learning, deep-learning, ml, pytorch, tensorflow, ai]
+    fintech: [fintech, payments, finance, banking]
+  manifests: [package.json, pyproject.toml, requirements.txt, pom.xml, build.gradle, build.gradle.kts, go.mod, Cargo.toml]
 
 ranking:
   weights:                # must add up to 1.0
@@ -107,6 +241,8 @@ ranking:
     stack_fit: 0.20
     freshness: 0.10
     low_competition: 0.10
+  freshness_half_life_days: 30
+  competition_comments: 10   # this many comments or more: no low-competition points
 
 pull_requests:
   stale_days: 7

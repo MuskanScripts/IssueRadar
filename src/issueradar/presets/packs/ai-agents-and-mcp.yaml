@@ -1,0 +1,6 @@
+name: AI agents and MCP
+description: SDKs and frameworks for building agents and Model Context Protocol servers.
+verified: false   # run `firstpr pack verify ai-agents-and-mcp` before relying on it
+repos:
+  - modelcontextprotocol/python-sdk
+  - google/adk-python
