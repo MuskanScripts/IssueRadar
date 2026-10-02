@@ -38,12 +38,42 @@ Open a new PowerShell window afterwards so the variable is loaded, then run
 `firstpr doctor`. (From M4 on, `doctor` also checks whether this token can list
 your own pull requests; if it cannot, the notes will say what to change.)
 
+## M6 (distribution)
+
+- [ ] **Create the template repo.** New repo `MuskanScripts/firstpr-radar-template`, copy
+  everything in `template/` into it (including `.github/`), then **Settings > General >
+  Template repository**. Run its workflow once by hand and check a digest appears.
+- [ ] **Register the PyPI trusted publisher.** On pypi.org: **Your projects > Publishing >
+  Add a new pending publisher**: project `firstpr`, owner `MuskanScripts`, repository
+  `IssueRadar`, workflow `release.yml`, environment `pypi`. Then create the `pypi`
+  environment in this repo (**Settings > Environments**).
+- [ ] **Turn on GitHub Pages** with source **GitHub Actions** (**Settings > Pages**). The
+  `Landing page` workflow deploys `site/` on the next push to `main`.
+- [ ] **Make the first release.** Rename `## [Unreleased]` in CHANGELOG.md to
+  `## [0.1.0] - <date>`, set `version = "0.1.0"` in `pyproject.toml`, merge, then:
+
+  ```powershell
+  git tag v0.1.0
+  git push origin v0.1.0
+  ```
+
+  The release workflow publishes to PyPI and GHCR, creates the GitHub release and moves the
+  `v0` tag the template uses. Afterwards make the GHCR package public (**Packages >
+  issueradar > Package settings > Change visibility**).
+- [ ] **Upload the social preview**: `site/social-preview.png` in **Settings > General >
+  Social preview**.
+- [ ] **Record the screen recording**: `firstpr serve --demo`, then the radar, an issue's
+  reasons, My PRs and the digest preview, about 60 seconds. Put it in the README.
+- [ ] **Clean-machine test.** On a Windows machine (or a fresh Windows Sandbox) with only
+  Python installed, follow the README from the top and time it. Done when it takes under
+  10 minutes. Note what was confusing.
+- [ ] **Read the self-test result** (`Action self-test` workflow) and copy what `GITHUB_TOKEN`
+  could read into RESULTS.md.
+
 ## Later
 
 - [ ] Register the OAuth app or GitHub App (M7).
-- [ ] Set up PyPI and a trusted publisher for releases (M6).
 - [ ] Check that the product name and domain are free to use.
-- [ ] Record the demo screen recording (M6).
 - [ ] Ask 5 people to try it.
 - [ ] Enable GitHub Discussions.
 - [ ] Have a lawyer review terms and privacy before hosted mode (M7).

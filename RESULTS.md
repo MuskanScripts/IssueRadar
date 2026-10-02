@@ -151,6 +151,30 @@ dismiss, `Ctrl+K` to jump to another page.
 
 **Phone width.** No horizontal scrolling on any screen at 412 px (Pixel 7 viewport).
 
+## M6: container image
+
+Built from the `Dockerfile` in this repo, Linux build container, 2026-10-02.
+
+- **Size:** 289 MB on disk, 68.1 MB compressed (`docker images`). Base
+  `python:3.13-slim` is 190 MB of that.
+- **Start to healthy:** 1,944, 2,461 and 2,038 ms from `docker run` to the
+  first `200` from `/api/health` (`firstpr serve --demo`).
+- **Daily job in the container:** `firstpr daily` synced, wrote
+  `digests/latest.md` and `feed.xml`, and exited 0. PR search could not be
+  checked here because the build sandbox blocks the search API; the CI
+  self-test covers it.
+
+## M6: what GITHUB_TOKEN can read
+
+Not measured yet. The `Action self-test` workflow runs the action with only
+`GITHUB_TOKEN` against `MuskanScripts/IssueRadar` and
+`modelcontextprotocol/python-sdk`. Its first run on GitHub fills this in.
+
+## M6: clean-machine setup time
+
+Not measured yet. Target: under 10 minutes from the README alone on a Windows
+machine with only Python installed (docs/human-tasks.md).
+
 ## M4: PR statuses compared with github.com
 
 **Done when:** statuses match what github.com shows for at least 5 real PRs.

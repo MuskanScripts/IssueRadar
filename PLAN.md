@@ -162,6 +162,15 @@ trusted publishing, release automation, docs set, landing page, screen recording
 Done when: following only the README on a clean machine takes under 10 minutes;
 the template repo's scheduled workflow produces a digest.
 
+Status: built. `action.yml` plus `template/`, tested end to end by the
+`Action self-test` workflow with only `GITHUB_TOKEN`; Dockerfile and Compose,
+checked in CI by starting the container and calling `/api/health`; wheel with
+the dashboard bundled; release workflow (PyPI trusted publishing, GHCR, GitHub
+release); landing page in `site/`; docs. Left for the maintainer
+(docs/human-tasks.md): create the template repo, register the PyPI publisher,
+turn on Pages, tag the first release, record the screen recording, and the
+clean-machine timing.
+
 ### M7. Hosted multi-user mode (feature flag)
 
 Starts only after M0 to M6 ship and a handful of other people use it. Sign in
