@@ -86,6 +86,33 @@ jobs:
           python -m pip install dist/*.whl
           cd /tmp && firstpr doctor
 
+  docker:
+    name: Container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: firstpr:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Start it and check the dashboard and API answer
+        shell: pwsh
+        run: |
+          docker run -d --name firstpr -p 8765:8765 firstpr:ci firstpr serve --host 0.0.0.0 --port 8765 --demo
+          $ok = $false
+          foreach ($i in 1..30) {
+            try { $health = Invoke-RestMethod http://127.0.0.1:8765/api/health; $ok = $true; break } catch { Start-Sleep 1 }
+          }
+          if (-not $ok) { docker logs firstpr; throw "The container never answered /api/health" }
+          if ($health.status -ne 'ok') { throw "Unexpected health: $($health | ConvertTo-Json)" }
+          $page = Invoke-WebRequest http://127.0.0.1:8765/
+          if ($page.Content -notmatch '<div id="root">') { throw "The dashboard was not served" }
+          docker run --rm firstpr:ci firstpr doctor
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest
