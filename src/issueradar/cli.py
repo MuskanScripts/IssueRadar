@@ -1054,5 +1054,49 @@ def export(
         console.print(text, markup=False, highlight=False)
 
 
+def _web_dist() -> Path | None:
+    """The built dashboard: FIRSTPR_WEB_DIST, the copy inside the package, or web/dist."""
+    env = os.environ.get(BRAND.env("WEB_DIST"))
+    candidates = [Path(env)] if env else []
+    candidates += [Path(__file__).parent / "web", Path.cwd() / "web" / "dist"]
+    return next((c for c in candidates if (c / "index.html").is_file()), None)
+
+
+@app.command()
+def serve(
+    host: Annotated[str, typer.Option(help="Keep 127.0.0.1 unless you know why not")] = "127.0.0.1",
+    port: Annotated[int, typer.Option()] = 8765,
+    demo: Annotated[bool, typer.Option("--demo", help="Show bundled demo data, no token")] = False,
+    config: ConfigOption = None,
+    skills: SkillsOption = None,
+) -> None:
+    """Run the local dashboard and its API."""
+    import uvicorn
+
+    from issueradar.api.app import create_app
+
+    settings = _settings(config)
+    db = _database(settings)
+    token, _ = token_from_env(os.environ)
+    web = _web_dist()
+    api = create_app(
+        db,
+        settings,
+        _rules(),
+        file_profile=_profile(skills),
+        demo=demo,
+        token_configured=bool(token),
+        web_dist=web,
+    )
+    where = f"http://{host}:{port}"
+    if web is None:
+        console.print(
+            "[yellow]The dashboard isn't built yet. Run `npm run build` in web/, or use "
+            "`npm run dev` there; the API is still available.[/yellow]"
+        )
+    console.print(f"{BRAND.name} is running at {where}  (API docs: {where}/api/docs)")
+    uvicorn.run(api, host=host, port=port, log_level="warning")
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()
