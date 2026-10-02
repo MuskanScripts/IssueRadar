@@ -83,7 +83,33 @@ def repo_stack(repo: Repo, settings: Settings) -> stack.RepoStack:
     )
 
 
-def build_context(session: Session, issue: Issue, repo: Repo) -> IssueContext:
+@dataclass
+class Preloaded:
+    """Rows shared by many issues, loaded once instead of once per issue."""
+
+    pulls: dict[int, list[PullRequest]] = field(default_factory=dict)  # repo id -> PRs
+    signals: dict[int, list[IssueSignal]] = field(default_factory=dict)  # issue id -> signals
+
+    @classmethod
+    def load(cls, session: Session, repo_ids: set[int] | None = None) -> Preloaded:
+        data = cls()
+        pr_query = select(PullRequest)
+        signal_query = select(IssueSignal).join(Issue, Issue.id == IssueSignal.issue_id)
+        if repo_ids is not None:
+            pr_query = pr_query.where(PullRequest.repo_id.in_(repo_ids))
+            signal_query = signal_query.where(Issue.repo_id.in_(repo_ids))
+        for pr in session.scalars(pr_query):
+            data.pulls.setdefault(pr.repo_id, []).append(pr)
+        for signal in session.scalars(signal_query):
+            data.signals.setdefault(signal.issue_id, []).append(signal)
+        return data
+
+
+def build_context(
+    session: Session, issue: Issue, repo: Repo, preloaded: Preloaded | None = None
+) -> IssueContext:
+    data = preloaded or Preloaded.load(session, {repo.id})
+    signals = data.signals.get(issue.id, [])
     comments: list[Comment] | None
     if issue.comments_fetched_for is None and issue.comments_count > 0:
         comments = None
@@ -96,15 +122,12 @@ def build_context(session: Session, issue: Issue, repo: Repo) -> IssueContext:
                 created_at=as_utc(s.gh_created_at) or utcnow(),
                 is_bot=bool(s.data.get("is_bot")),
             )
-            for s in session.scalars(
-                select(IssueSignal).where(
-                    IssueSignal.issue_id == issue.id, IssueSignal.kind == "comment"
-                )
-            )
+            for s in signals
+            if s.kind == "comment"
         ]
 
     links: list[PrLink] = []
-    for pr in session.scalars(select(PullRequest).where(PullRequest.repo_id == repo.id)):
+    for pr in data.pulls.get(repo.id, []):
         state = "merged" if pr.merged_at else pr.state
         if state not in ("open", "merged"):
             continue
@@ -113,7 +136,7 @@ def build_context(session: Session, issue: Issue, repo: Repo) -> IssueContext:
         elif issue.number in pr.mentioned_issues and state == "open":
             links.append(PrLink(pr.number, state, "mention", pr.author_is_bot))
     connected = 0
-    for signal in session.scalars(select(IssueSignal).where(IssueSignal.issue_id == issue.id)):
+    for signal in signals:
         if signal.kind == "cross_reference" and signal.data.get("is_pr"):
             other = signal.data.get("repo") or None
             links.append(
@@ -172,10 +195,12 @@ class Radar:
         self.profile = profile
         self.clock = clock
 
-    def evaluate(self, session: Session, issue: Issue, repo: Repo) -> IssueReport:
+    def evaluate(
+        self, session: Session, issue: Issue, repo: Repo, preloaded: Preloaded | None = None
+    ) -> IssueReport:
         now = self.clock()
         rules = rules_for(self.rules, repo.full_name)
-        context = build_context(session, issue, repo)
+        context = build_context(session, issue, repo, preloaded)
         avail = availability.assess(context, rules, self.settings.availability, now)
         diff = difficulty.assess(context, rules, self.settings.difficulty)
         repo_tech = repo_stack(repo, self.settings)
@@ -241,8 +266,9 @@ class Radar:
             query = select(Issue, Repo).join(Repo).where(Issue.state == "open")
             if filters.repos:
                 query = query.where(Repo.full_name.in_(filters.repos))
+            preloaded = Preloaded.load(session)
             for issue, repo in session.execute(query):
-                report = self.evaluate(session, issue, repo)
+                report = self.evaluate(session, issue, repo, preloaded)
                 if not filters.include_unavailable and report.rank is None:
                     continue
                 if not _matches(report, filters, now):
@@ -258,10 +284,11 @@ class Radar:
             repo = session.scalar(select(Repo).where(Repo.full_name == full_name))
             if repo is None:
                 return 0
+            preloaded = Preloaded.load(session, {repo.id})
             for issue in session.scalars(
                 select(Issue).where(Issue.repo_id == repo.id, Issue.state == "open")
             ):
-                report = self.evaluate(session, issue, repo)
+                report = self.evaluate(session, issue, repo, preloaded)
                 session.add(
                     ScoreSnapshot(
                         user_id=user_id,
