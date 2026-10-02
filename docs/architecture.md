@@ -39,8 +39,8 @@ All of these are thin shells over the same core package.
 | Interface | Exists today |
 | --- | --- |
 | CLI (`firstpr`) | `--version`, `doctor` (with `--measure-etag`), `demo`, `watch add/remove/list`, `sync`, `find`, `explain`, `eval sample/run`, `pack list/add/verify`, `digest`, `dismiss`, `snooze`, `init`, `export`, `prs` |
-| FastAPI server | M5 |
-| React dashboard (`web/`) | Shell that renders demo data with the design tokens |
+| FastAPI server (`firstpr serve`) | Local API, read-only toward GitHub, OpenAPI at /api/docs |
+| React dashboard (`web/`) | Radar, list, drawer, Repos, My PRs, Profile, Digest, Insights, Settings; demo mode in the browser |
 | Scheduled GitHub Action | M6 |
 
 ## Boundaries that matter
@@ -78,6 +78,14 @@ src/issueradar/
   delivery/http.py         webhook HTTP for digests; refuses GitHub hosts
   prs/status.py            PR status rules and nudge drafts (pure functions)
   prs/tracker.py           finds your PRs and reads their details
+  api/app.py               FastAPI app for the dashboard
+  api/profile.py           skill profile and saved views in the database
+web/src/
+  lib/source.ts            API data source; lib/demo-source.ts the demo one
+  lib/data.tsx             TanStack Query hooks and the demo switch
+  components/Radar.tsx     the radar (rings = tiers, angle = language, size = health)
+  components/IssueList.tsx keyboard path, virtualised
+  pages/                   one file per screen
   demo/loader.py           demo dataset schema and loader
   demo/fixtures/demo.json  demo data
 web/src/

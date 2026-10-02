@@ -61,10 +61,11 @@ watchlist ──► discover ──► fetch ──► normalise ──► enric
 | 15 | Score at query time; keep snapshots for history | [0015](docs/adr/0015-score-at-query-time.md) |
 | 16 | A digest item is sent once, until what the reader sees changes | [0016](docs/adr/0016-digest-idempotency.md) |
 | 17 | PR status from REST, in a fixed order | [0017](docs/adr/0017-pr-status-over-rest.md) |
+| 18 | Demo mode runs in the browser from the bundled fixtures | [0018](docs/adr/0018-demo-mode-in-the-browser.md) |
 
 ## Milestones
 
-Status: **M0, M1 and M2 done (merged). M3 and M4 in review.** Everything after M4 is planned, not built.
+Status: **M0, M1 and M2 done (merged). M3, M4 and M5 in review.** Everything after M5 is planned, not built.
 
 ### M0. Scaffold
 
@@ -145,9 +146,13 @@ Scope: FastAPI with OpenAPI, React dashboard (Radar, list view, issue drawer,
 Repos, My PRs, Profile, Digest, Insights, Settings), demo mode, command
 palette, keyboard shortcuts, saved views, density toggle.
 
-Done when: demo mode runs with no token; the Playwright smoke test passes; axe
-reports zero serious violations on every screen; the main flow works by
-keyboard alone.
+Done when:
+
+- [x] Demo mode runs with no token (and no server: `?demo=1` or the toggle).
+- [x] The Playwright smoke test passes (18 checks, desktop and phone).
+- [x] axe reports zero serious violations on every screen, light and dark.
+- [x] The main flow works by keyboard alone (tested).
+- [x] First load under 2 seconds locally (about 0.2 s; RESULTS.md).
 
 ### M6. Distribution
 
