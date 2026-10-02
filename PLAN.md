@@ -59,10 +59,11 @@ watchlist ──► discover ──► fetch ──► normalise ──► enric
 | 13 | PR references are strong (closing keywords) or weak (mentions); bot PR bodies skipped | [0013](docs/adr/0013-weak-and-strong-pr-references.md) |
 | 14 | Enrich finalists only, over REST (GraphQL batching later) | [0014](docs/adr/0014-finalist-enrichment-over-rest.md) |
 | 15 | Score at query time; keep snapshots for history | [0015](docs/adr/0015-score-at-query-time.md) |
+| 16 | A digest item is sent once, until what the reader sees changes | [0016](docs/adr/0016-digest-idempotency.md) |
 
 ## Milestones
 
-Status: **M0 done (merged). M1 and M2 in review.** Everything after M2 is planned, not built.
+Status: **M0, M1 and M2 done (merged). M3 in review.** Everything after M3 is planned, not built.
 
 ### M0. Scaffold
 
@@ -110,6 +111,7 @@ Done when:
 - [x] `explain` shows the "why" for availability, tier and health.
 - [x] Claim detection has unit tests, including maintainer-invitation false positives.
 - [ ] Starter packs verified with `firstpr pack verify` (needs a personal token).
+- [x] Merged.
 
 ### M3. CLI and digest
 
@@ -117,8 +119,12 @@ Scope: all CLI commands from brief section 6, digest sections, idempotency via
 `seen_items`, dismiss and snooze, renderers (HTML, text, Markdown), channels
 (RSS and Markdown first, then SMTP email, Telegram, Discord, Slack).
 
-Done when: `digest --send` works for RSS and Markdown, and a second run sends
-nothing new.
+Done when:
+
+- [x] `digest --send` works for RSS and Markdown.
+- [x] A second run sends nothing new (tested).
+- [x] Email, Telegram, Discord and Slack channels, off until configured.
+- [x] Digest from cache in under 5 seconds (about 2 s on 5,000 generated issues; RESULTS.md).
 
 ### M4. PR tracker
 

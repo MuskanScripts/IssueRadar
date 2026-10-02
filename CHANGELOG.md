@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (M3)
+
+- Daily digest with free issues, your pull requests, new since yesterday, watchlist alerts and a quiet-day note.
+- Sent items are remembered: a second `digest --send` sends nothing new. `dismiss` and `snooze`.
+- Markdown, plain-text and HTML rendering; RSS, Markdown, email (SMTP), Telegram, Discord and Slack channels.
+- `firstpr init`, `firstpr export`, and a contribution checklist in `explain`.
+- `scripts/bench_digest.py`; ranking about five times faster (RESULTS.md).
+
 ### Added (M2)
 
 - Availability engine with six states and a reason for every decision; maintainer invitations are never claims.

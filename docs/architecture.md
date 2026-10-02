@@ -27,6 +27,7 @@ flowchart LR
 | Discover and fetch | Per repo: repo, open issues, open PRs, with ETags and a stable sort (ADR 0012) | M1, built |
 | Enrich | One `linked:pr` search per repo; comments and timelines for finalists; repo health inputs (ADR 0014) | M2, built |
 | Score and rank | Engines run on stored data when asked (ADR 0015) | M2, built |
+| Deliver | Digest builder, renderers and channels (ADR 0016) | M3, built |
 | Normalise | Store repos, issues, signals and PRs with `user_id` on personal tables | M1 |
 | Deliver | Digest renderers and channels | M3 |
 
@@ -36,7 +37,7 @@ All of these are thin shells over the same core package.
 
 | Interface | Exists today |
 | --- | --- |
-| CLI (`firstpr`) | `--version`, `doctor` (with `--measure-etag`), `demo`, `watch add/remove/list`, `sync`, `find`, `explain`, `eval sample/run`, `pack list/add/verify` |
+| CLI (`firstpr`) | `--version`, `doctor` (with `--measure-etag`), `demo`, `watch add/remove/list`, `sync`, `find`, `explain`, `eval sample/run`, `pack list/add/verify`, `digest`, `dismiss`, `snooze`, `init`, `export` |
 | FastAPI server | M5 |
 | React dashboard (`web/`) | Shell that renders demo data with the design tokens |
 | Scheduled GitHub Action | M6 |
@@ -71,6 +72,9 @@ src/issueradar/
   radar.py                 builds engine inputs from the database; find and explain
   evaluation.py            precision, recall and tier accuracy against your labels
   presets/                 repo rules and starter packs (YAML)
+  engine/coach.py          the "before you start" checklist
+  digest/                  digest builder, renderers and channels
+  delivery/http.py         webhook HTTP for digests; refuses GitHub hosts
   demo/loader.py           demo dataset schema and loader
   demo/fixtures/demo.json  demo data
 web/src/
