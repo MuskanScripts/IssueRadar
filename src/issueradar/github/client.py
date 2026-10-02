@@ -37,6 +37,7 @@ from issueradar.github.errors import (
     Gone,
     GraphQLQueryError,
     GraphQLTimeout,
+    NetworkError,
     NotFound,
     QuotaExhausted,
     ReadOnlyViolation,
@@ -254,7 +255,23 @@ class GitHubClient:
                 await self._pace_search()
             async with self._semaphore:
                 started = self._clock()
-                response = await self._http.request(method, url, headers=headers, json=json_body)
+                try:
+                    response = await self._http.request(
+                        method, url, headers=headers, json=json_body
+                    )
+                except httpx.TransportError as exc:
+                    if attempt < retry.max_retries:
+                        await self._sleep(
+                            min(
+                                retry.server_error_wait_seconds * retry.backoff_factor**attempt,
+                                retry.max_wait_seconds,
+                            )
+                        )
+                        continue
+                    raise NetworkError(
+                        f"Could not reach GitHub ({type(exc).__name__}: {exc}). Check your "
+                        "internet connection, proxy and certificates, then try again."
+                    ) from exc
                 elapsed = self._clock() - started
             self.budget.observe(
                 resource, response.headers, not_modified=response.status_code == 304
