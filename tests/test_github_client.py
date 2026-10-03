@@ -243,3 +243,25 @@ async def test_search_is_paced_per_minute(settings: Settings, fake_sleep: FakeSl
             await client.get("/search/issues", params={"q": "x"}, conditional=False)
     assert len(fake_sleep.waits) == 1  # the 31st search in the same minute waited
     assert fake_sleep.waits[0] == 60.0
+
+
+async def test_network_errors_are_retried_then_reported(
+    settings: Settings, fake_sleep: FakeSleep
+) -> None:
+    import httpx
+
+    from issueradar.github.errors import NetworkError
+
+    calls = []
+
+    def fail(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        raise httpx.ConnectError("certificate verify failed", request=request)
+
+    async with GitHubClient(
+        settings.github, "t", transport=httpx.MockTransport(fail), sleep=fake_sleep
+    ) as client:
+        with pytest.raises(NetworkError, match="Could not reach GitHub"):
+            await client.get("/repos/o/r")
+    assert len(calls) == settings.github.retry.max_retries + 1
+    assert fake_sleep.waits == [2.0, 4.0, 8.0, 16.0]

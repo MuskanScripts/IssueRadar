@@ -151,6 +151,56 @@ dismiss, `Ctrl+K` to jump to another page.
 
 **Phone width.** No horizontal scrolling on any screen at 412 px (Pixel 7 viewport).
 
+## M6: container image
+
+Built from the `Dockerfile` in this repo, Linux build container, 2026-10-02.
+
+- **Size:** 289 MB on disk, 68.1 MB compressed (`docker images`). Base
+  `python:3.13-slim` is 190 MB of that.
+- **Start to healthy:** 1,944, 2,461 and 2,038 ms from `docker run` to the
+  first `200` from `/api/health` (`firstpr serve --demo`).
+- **Daily job in the container:** `firstpr daily` synced, wrote
+  `digests/latest.md` and `feed.xml`, and exited 0. PR search could not be
+  checked here because the build sandbox blocks the search API; the CI
+  self-test covers it.
+
+## M6: what GITHUB_TOKEN can read
+
+Measured by the `Action self-test` workflow, run
+[37024126453](https://github.com/MuskanScripts/IssueRadar/actions/runs/37024126453),
+2026-10-02, with only the built-in `GITHUB_TOKEN` (job permission
+`contents: read`).
+
+- **Other public repos: readable.** It synced
+  `modelcontextprotocol/python-sdk` (245 open issues, 190 open PRs, 30
+  finalists enriched with comments and timelines, health 51) as well as its
+  own repo.
+- **Search: works.** The `linked:pr` searches and the PR search
+  `is:pr author:MuskanScripts` both answered, and the PR search found PRs in
+  repos outside this one.
+- **Limits it reported:** core 5,000 per hour, search 30 per minute. GitHub
+  documents 1,000 requests per hour per repository for `GITHUB_TOKEN`; this
+  run saw 5,000, so `firstpr doctor` reports the real numbers from
+  `/rate_limit` rather than trusting either.
+- **Cost of a cold run:** 83 requests for the sync and 38 for 10 PRs. The
+  `firstpr daily` step took 47 seconds and the whole job 72 seconds. The saved
+  database was 1.7 MB.
+- **Digest:** 22 free issues, written to `latest.md` and `feed.xml` and
+  uploaded as the `firstpr-digest` artifact.
+
+So the template works with no secret at all for a small watchlist. A
+fine-grained token is still recommended for larger ones (ADR 0006), mainly
+for the search budget and because the `GITHUB_TOKEN` limit is not
+guaranteed.
+
+The same run showed the digest repeating a PR's status ("Merged. Merged.
+Nothing to do."); fixed in the next commit with a test.
+
+## M6: clean-machine setup time
+
+Not measured yet. Target: under 10 minutes from the README alone on a Windows
+machine with only Python installed (docs/human-tasks.md).
+
 ## M4: PR statuses compared with github.com
 
 **Done when:** statuses match what github.com shows for at least 5 real PRs.

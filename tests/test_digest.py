@@ -144,6 +144,23 @@ def test_renderers() -> None:
     assert "Fix &lt;typo&gt;" in html and "#F2B01E" in html
 
 
+def test_pr_status_is_not_said_twice() -> None:
+    def pr(status: str, needs: str) -> PullItem:
+        return PullItem("pr:o/r#3", "o/r", 3, "T", None, status, needs, "h")
+
+    d = sample_digest()
+    d.pulls[:] = [
+        pr("Merged", "Merged. Nothing to do."),
+        pr("Waiting for review", "Waiting for a first review. Nothing to do yet."),
+        pr("Stale", "Quiet for 9 days"),
+    ]
+    md = render.markdown(d)
+    assert "Merged. Merged." not in md and "T. Merged. Nothing to do." in md
+    assert "Waiting for review. Waiting" not in md
+    assert "T. Stale. Quiet for 9 days" in md
+    assert "o/r#3  Merged. Nothing to do." in render.text(d)
+
+
 def test_markdown_and_rss_files(tmp_path: Path) -> None:
     d = sample_digest()
     assert "wrote" in ch.MarkdownChannel(tmp_path).send(d)
@@ -274,3 +291,31 @@ async def test_export(
     assert result.exit_code == 0, result.stdout
     data = json.loads(out.read_text("utf-8"))
     assert data["watchlist"] == [REPO] and len(data["issues"]) == 9
+
+
+async def test_digest_writes_github_step_summary(
+    db: Database, synced: FakeGitHub, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FIRSTPR_DB_URL", db.url)
+    monkeypatch.chdir(tmp_path)
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    result = CliRunner().invoke(app, ["digest", "--send"])
+    assert result.exit_code == 0, result.stdout
+    assert "## Free for you" in summary.read_text("utf-8")
+
+    again = CliRunner().invoke(app, ["digest", "--send"])
+    assert again.exit_code == 0, again.stdout
+    assert (
+        summary.read_text("utf-8")
+        .rstrip()
+        .endswith("Nothing new since the last digest, so nothing was sent.")
+    )
+
+
+def test_daily_runs_every_step_and_reports_problems() -> None:
+    result = CliRunner().invoke(app, ["daily", "--skip-prs"])
+    out = " ".join(result.stdout.split())
+    assert "Sync" in out and "Digest" in out
+    assert result.exit_code == 1  # nothing is watched yet, so sync reports a problem
+    assert "Finished with problems in: Sync" in out

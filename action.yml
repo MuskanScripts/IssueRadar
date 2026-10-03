@@ -1,0 +1,128 @@
+name: FirstPR daily digest
+description: Find free open-source issues that match your level and stack, track your pull requests, and write a daily digest.
+author: Muskan
+branding:
+  icon: radio
+  color: blue
+
+inputs:
+  token:
+    description: >
+      Token used to read GitHub. The default GITHUB_TOKEN can read public repos.
+      A fine-grained token with no extra permissions gives a higher search limit.
+    required: false
+    default: ${{ github.token }}
+  watchlist:
+    description: Text file with one repo per line (owner/name or a GitHub URL). Lines starting with # are skipped.
+    required: false
+    default: watchlist.txt
+  config:
+    description: Your firstpr.yaml. Skipped if the file does not exist.
+    required: false
+    default: firstpr.yaml
+  skills:
+    description: Your skills.yaml. Skipped if the file does not exist.
+    required: false
+    default: skills.yaml
+  author:
+    description: GitHub login whose pull requests are tracked. Leave empty to skip PR tracking.
+    required: false
+    default: ${{ github.repository_owner }}
+  version:
+    description: Version of firstpr to install from PyPI. Empty means the code that ships with this action.
+    required: false
+    default: ""
+  python-version:
+    description: Python version to run with.
+    required: false
+    default: "3.13"
+  cache:
+    description: Keep the database between runs in the Actions cache. Without it every run starts cold and repeats issues.
+    required: false
+    default: "true"
+  upload-artifact:
+    description: Upload the digests folder as a build artifact.
+    required: false
+    default: "true"
+
+outputs:
+  digest:
+    description: Path to the Markdown digest, or empty when nothing new was found since the last run.
+    value: ${{ steps.daily.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install firstpr
+      shell: pwsh
+      env:
+        FIRSTPR_VERSION: ${{ inputs.version }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        if ($env:FIRSTPR_VERSION) {
+          python -m pip install --disable-pip-version-check "firstpr==$($env:FIRSTPR_VERSION)"
+        } else {
+          python -m pip install --disable-pip-version-check "$env:ACTION_PATH"
+        }
+        firstpr --version
+
+    # The database keeps ETags, what was already sent and your PR history between runs.
+    - name: Restore the database
+      if: inputs.cache == 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: .firstpr
+        key: firstpr-db-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: firstpr-db-
+
+    - name: Run the daily job
+      id: daily
+      shell: pwsh
+      env:
+        FIRSTPR_GITHUB_TOKEN: ${{ inputs.token }}
+        FIRSTPR_AUTHOR: ${{ inputs.author }}
+        FIRSTPR_DB_URL: sqlite:///.firstpr/firstpr.sqlite
+        WATCHLIST: ${{ inputs.watchlist }}
+        CONFIG_FILE: ${{ inputs.config }}
+        SKILLS_FILE: ${{ inputs.skills }}
+      run: |
+        $started = (Get-Date).ToUniversalTime()
+        New-Item -ItemType Directory -Force -Path .firstpr | Out-Null
+        $common = @()
+        if (Test-Path $env:CONFIG_FILE) { $common += @('--config', $env:CONFIG_FILE) }
+        if (-not (Test-Path $env:WATCHLIST)) {
+          Write-Output "::error::Watchlist file '$($env:WATCHLIST)' not found. Add one repo per line."
+          exit 2
+        }
+        firstpr watch add --file $env:WATCHLIST --exact @common
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        $daily = @('daily') + $common
+        if (Test-Path $env:SKILLS_FILE) { $daily += @('--skills', $env:SKILLS_FILE) }
+        if (-not $env:FIRSTPR_AUTHOR) { $daily += '--skip-prs' }
+        firstpr @daily
+        $code = $LASTEXITCODE
+        # latest.md is only rewritten when something new was sent this run.
+        $digest = if ((Test-Path digests/latest.md) -and ((Get-Item digests/latest.md).LastWriteTimeUtc -ge $started)) { 'digests/latest.md' } else { '' }
+        "digest=$digest" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        exit $code
+
+    - name: Save the database
+      if: always() && inputs.cache == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .firstpr
+        key: firstpr-db-${{ github.run_id }}-${{ github.run_attempt }}
+
+    - name: Upload the digest
+      if: always() && inputs.upload-artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: firstpr-digest
+        path: digests/
+        if-no-files-found: ignore
+        retention-days: 30

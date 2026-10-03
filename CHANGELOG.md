@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (M6)
+
+- GitHub Action (`action.yml`) and the template repo files in `template/`: a daily scheduled digest with the database kept in the Actions cache.
+- `firstpr daily` (sync, your pull requests, digest), `watch add --file` and `--exact`, and the digest on the Actions run summary.
+- Docker image (non-root, `/data` volume, health check) and `docker-compose.yml` with the dashboard and a daily job; `GET /api/health`.
+- The wheel bundles the built dashboard. Release workflow: PyPI with trusted publishing, GHCR image, GitHub release.
+- Landing page in `site/` for GitHub Pages, brand assets in `docs/brand/`.
+- Docs: `docs/github-action.md`, `docs/self-hosting.md`, `ROADMAP.md`, ADR 0019.
+
+### Changed (M6)
+
+- Network errors are retried and then reported in one line instead of a traceback.
+
 ### Added (M5)
 
 - Local API (FastAPI, OpenAPI at /api/docs) and `firstpr serve`, bound to 127.0.0.1 by default.

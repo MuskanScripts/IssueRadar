@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FirstPR: find open-source issues you can actually work on</title>
+<meta name="description" content="FirstPR watches the open-source projects you pick, skips issues somebody already claimed, and sends you a short daily list matched to your level and stack.">
+<meta property="og:title" content="FirstPR">
+<meta property="og:description" content="Find open-source issues you can actually work on.">
+<meta property="og:image" content="social-preview.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-display:swap;font-weight:200 800;src:url(fonts/bricolage-grotesque-latin-opsz-normal.woff2) format('woff2-variations')}
+@font-face{font-family:'Instrument Sans';font-style:normal;font-display:swap;font-weight:400 700;src:url(fonts/instrument-sans-latin-wght-normal.woff2) format('woff2-variations')}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:100 800;src:url(fonts/jetbrains-mono-latin-wght-normal.woff2) format('woff2-variations')}
+body{margin:0;background:#F1F4F5}
+a{color:#2455F4}
+a:hover{color:#1B43CC}
+a:focus-visible,button:focus-visible{outline:3px solid #0E1B2C;outline-offset:3px}
+button{font-family:inherit;cursor:pointer}
+.btn{transition:background-color .15s ease}
+.btn:hover{background:#1B43CC !important;color:#FFFFFF !important}
+.btn-light:hover{background:#E4EAFF !important;color:#0E1B2C !important}
+.chip:hover{border-color:#0E1B2C !important}
+@keyframes fp-sweep{to{transform:rotate(360deg)}}
+.fp-sweep{animation:fp-sweep 10s linear infinite}
+@media (prefers-reduced-motion:reduce){.fp-sweep{animation:none}}
+.tier{display:inline-flex;align-items:center;gap:12px;min-height:48px;padding:0 20px;background:#FFFFFF;color:#0E1B2C;border:1.5px solid #B8C4CC;border-radius:10px;font-size:16px;font-weight:600}
+.tier[aria-pressed="true"]{background:#0E1B2C;color:#FFFFFF;border-color:#0E1B2C}
+.dots{display:flex;gap:4px}
+.dots i{width:8px;height:8px;box-sizing:border-box;border-radius:50%;border:1.5px solid currentColor}
+.dots i.on{background:currentColor}
+.fchip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;background:#FFFFFF;color:#0E1B2C;border:1.5px solid #B8C4CC;border-radius:999px;font-size:15px;font-weight:500}
+.fchip svg{display:none}
+.fchip[aria-pressed="true"]{background:#2455F4;color:#FFFFFF;border-color:#2455F4;font-weight:600}
+.fchip[aria-pressed="true"] svg{display:block}
+.tag{border:1px solid #CBD5DB;border-radius:6px;padding:1px 8px;color:#33465A}
+.free{display:inline-flex;align-items:center;gap:6px;background:#FCEFC7;color:#5C4200;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px}
+.free::before{content:"";width:7px;height:7px;border-radius:50%;background:#F2B01E}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 0;border-top:1px solid #E1E7EB}
+.tierinfo{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:24px 40px;padding:24px;background:#F1F4F5;border-radius:10px}
+.tierinfo[hidden]{display:none}
+pre{white-space:pre-wrap;word-break:break-word}
+</style>
+</head>
+<body>
+<div id="top" style="background:#F1F4F5;color:#0E1B2C;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:17px;line-height:1.55">
+
+<!-- NAV -->
+<header style="max-width:1180px;margin:0 auto;padding:20px clamp(20px,4vw,40px);box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:16px 24px;flex-wrap:wrap">
+<a href="#top" style="display:flex;align-items:center;gap:10px;color:#0E1B2C;text-decoration:none;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:23px;letter-spacing:-0.02em">
+<svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true"><circle cx="15" cy="15" r="13" stroke="#0E1B2C" stroke-width="2"/><circle cx="15" cy="15" r="6.5" stroke="#0E1B2C" stroke-width="2"/><circle cx="22" cy="8.5" r="3.4" fill="#F2B01E" stroke="#0E1B2C" stroke-width="2"/></svg>
+<span>FirstPR</span>
+</a>
+<nav aria-label="Page sections" style="display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap">
+<a href="#levels" style="color:#0E1B2C;text-decoration:none;font-weight:500;font-size:15px;padding:12px 0">Levels</a>
+<a href="#how" style="color:#0E1B2C;text-decoration:none;font-weight:500;font-size:15px;padding:12px 0">How it works</a>
+<a href="#prs" style="color:#0E1B2C;text-decoration:none;font-weight:500;font-size:15px;padding:12px 0">Your pull requests</a>
+<a class="btn" href="#start" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;background:#2455F4;color:#FFFFFF;border-radius:10px;font-weight:600;font-size:15px;text-decoration:none">Start your radar</a>
+</nav>
+</header>
+
+<!-- HERO -->
+<section style="position:relative;overflow:hidden">
+<div style="max-width:1180px;margin:0 auto;padding:clamp(32px,6vw,80px) clamp(20px,4vw,40px) clamp(56px,8vw,104px);box-sizing:border-box;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:clamp(40px,5vw,72px);align-items:center;min-height:620px">
+
+<div style="display:flex;flex-direction:column;gap:28px;position:relative;z-index:1">
+<h1 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(40px,5.6vw,72px);line-height:1.02;letter-spacing:-0.03em;text-wrap:balance">Your first pull request is out there. Let's go find it.</h1>
+<p style="margin:0;font-size:clamp(18px,1.6vw,21px);line-height:1.5;color:#33465A;max-width:34em;text-wrap:pretty">FirstPR watches the open-source projects you pick, skips every issue somebody has already claimed, and sends you a short daily list matched to your level and your stack.</p>
+<div style="display:flex;align-items:center;gap:16px 28px;flex-wrap:wrap">
+<a class="btn" href="#start" style="display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 28px;background:#2455F4;color:#FFFFFF;border-radius:10px;font-weight:600;font-size:17px;text-decoration:none">Start your radar</a>
+<a href="#levels" style="color:#0E1B2C;font-weight:600;text-underline-offset:4px;padding:12px 0">See how it picks</a>
+</div>
+<p style="margin:0;font-size:15px;color:#4A5B6B">Beginner friendly. Pro approved.</p>
+</div>
+
+<div style="position:relative;min-height:500px;display:flex;align-items:center">
+<div aria-hidden="true" style="position:absolute;right:-170px;top:-80px;width:660px;height:660px;pointer-events:none">
+<svg width="660" height="660" viewBox="0 0 660 660" fill="none" style="position:absolute;left:0;top:0">
+<circle cx="330" cy="330" r="320" stroke="#C5D0D8" stroke-width="1.5"/>
+<circle cx="330" cy="330" r="240" stroke="#C5D0D8" stroke-width="1.5"/>
+<circle cx="330" cy="330" r="160" stroke="#C5D0D8" stroke-width="1.5"/>
+<circle cx="330" cy="330" r="80" stroke="#C5D0D8" stroke-width="1.5"/>
+<path d="M330 10V650M10 330H650" stroke="#D5DDE3" stroke-width="1.5"/>
+<circle cx="262" cy="190" r="5" fill="#0E1B2C" fill-opacity="0.35"/>
+<circle cx="560" cy="410" r="5" fill="#0E1B2C" fill-opacity="0.35"/>
+<circle cx="150" cy="300" r="5" fill="#0E1B2C" fill-opacity="0.35"/>
+<circle cx="474" cy="196" r="22" stroke="#F2B01E" stroke-width="2"/>
+<circle cx="474" cy="196" r="9" fill="#F2B01E" stroke="#0E1B2C" stroke-width="2.5"/>
+<circle cx="204" cy="452" r="7" fill="#F2B01E" stroke="#0E1B2C" stroke-width="2.5"/>
+<circle cx="420" cy="500" r="6" fill="#F2B01E" stroke="#0E1B2C" stroke-width="2.5"/>
+</svg>
+<div class="fp-sweep" style="position:absolute;left:0;top:0;width:660px;height:660px">
+<svg width="660" height="660" viewBox="0 0 660 660" fill="none">
+<path d="M330 330L330 10A320 320 0 0 1 607 170Z" fill="#2455F4" fill-opacity="0.10"/>
+<path d="M330 330L607 170" stroke="#2455F4" stroke-width="2" stroke-opacity="0.55"/>
+</svg>
+</div>
+</div>
+
+<div style="position:relative;z-index:1;width:100%;background:#FBFCFC;border:1px solid #CBD5DB;border-radius:14px;box-shadow:0 28px 56px -28px rgba(14,27,44,0.4);overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px">
+<span style="font-weight:700;font-size:16px">Today's radar</span>
+<span style="font-size:13px;color:#4A5B6B">Sample data</span>
+</div>
+<div aria-hidden="true" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:0 20px 16px">
+<span style="display:inline-flex;align-items:center;min-height:32px;padding:0 14px;background:#0E1B2C;color:#FFFFFF;border-radius:8px;font-size:14px;font-weight:600">Beginner</span>
+<span style="display:inline-flex;align-items:center;min-height:32px;padding:0 14px;border:1px solid #B8C4CC;border-radius:8px;font-size:14px;color:#33465A">Intermediate</span>
+<span style="display:inline-flex;align-items:center;min-height:32px;padding:0 14px;border:1px solid #B8C4CC;border-radius:8px;font-size:14px;color:#33465A">Pro</span>
+<span style="display:inline-flex;align-items:center;min-height:32px;padding:0 12px;background:#E4EAFF;color:#1B43CC;border-radius:999px;font-size:14px;font-weight:600">Python</span>
+<span style="display:inline-flex;align-items:center;min-height:32px;padding:0 12px;background:#E4EAFF;color:#1B43CC;border-radius:999px;font-size:14px;font-weight:600">Java</span>
+</div>
+
+<div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 20px;border-top:1px solid #E1E7EB">
+<span aria-hidden="true" style="display:flex;gap:4px"><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;background:#0E1B2C;border:1.5px solid #0E1B2C"></span><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;border:1.5px solid #0E1B2C"></span><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;border:1.5px solid #0E1B2C"></span></span>
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600;font-size:16px">Fix broken link in the quickstart</span><span style="font-size:14px;color:#4A5B6B">sample/tool-sdk, Beginner</span></span>
+<span style="display:inline-flex;align-items:center;gap:6px;background:#FCEFC7;color:#5C4200;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px"><span style="width:7px;height:7px;border-radius:50%;background:#F2B01E"></span>Free</span>
+</div>
+<div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 20px;border-top:1px solid #E1E7EB">
+<span aria-hidden="true" style="display:flex;gap:4px"><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;background:#0E1B2C;border:1.5px solid #0E1B2C"></span><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;border:1.5px solid #0E1B2C"></span><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;border:1.5px solid #0E1B2C"></span></span>
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600;font-size:16px">Add a test for an empty result list</span><span style="font-size:14px;color:#4A5B6B">sample/ui-kit, Beginner</span></span>
+<span style="display:inline-flex;align-items:center;gap:6px;background:#FCEFC7;color:#5C4200;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px"><span style="width:7px;height:7px;border-radius:50%;background:#F2B01E"></span>Free</span>
+</div>
+<div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 20px;border-top:1px solid #E1E7EB">
+<span aria-hidden="true" style="display:flex;gap:4px"><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;background:#0E1B2C;border:1.5px solid #0E1B2C"></span><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;background:#0E1B2C;border:1.5px solid #0E1B2C"></span><span style="width:8px;height:8px;box-sizing:border-box;border-radius:50%;border:1.5px solid #0E1B2C"></span></span>
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600;font-size:16px">Client hangs when the server closes early</span><span style="font-size:14px;color:#4A5B6B">sample/agent-runtime, Intermediate</span></span>
+<span style="display:inline-flex;align-items:center;gap:6px;background:#FCEFC7;color:#5C4200;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px"><span style="width:7px;height:7px;border-radius:50%;background:#F2B01E"></span>Free</span>
+</div>
+<div style="padding:14px 20px;border-top:1px solid #E1E7EB;font-size:14px;color:#4A5B6B">Claimed issues are filtered out before you ever see them.</div>
+</div>
+</div>
+
+</div>
+</section>
+
+<!-- WHY -->
+<section style="border-top:1px solid #CBD5DB">
+<div style="max-width:1180px;margin:0 auto;padding:clamp(56px,8vw,104px) clamp(20px,4vw,40px);box-sizing:border-box">
+<h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-0.025em;text-wrap:balance;max-width:18em">Your first pull request is the hard part. Finding it shouldn't be.</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:40px 48px;margin-top:56px">
+<div style="border-top:2px solid #0E1B2C;padding-top:20px;display:flex;flex-direction:column;gap:12px">
+<h3 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:24px;line-height:1.2;letter-spacing:-0.01em">Is somebody already on this?</h3>
+<p style="margin:0;color:#33465A;line-height:1.6;text-wrap:pretty">FirstPR checks for assignees, open pull requests and "I'll take this" comments, so you never spend a weekend on a fix that's already in review.</p>
+</div>
+<div style="border-top:2px solid #0E1B2C;padding-top:20px;display:flex;flex-direction:column;gap:12px">
+<h3 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:24px;line-height:1.2;letter-spacing:-0.01em">Will anyone review my PR?</h3>
+<p style="margin:0;color:#33465A;line-height:1.6;text-wrap:pretty">Every repo gets a health score from how fast maintainers reply and how often outside contributors get merged. Dead projects sink to the bottom of your list.</p>
+</div>
+<div style="border-top:2px solid #0E1B2C;padding-top:20px;display:flex;flex-direction:column;gap:12px">
+<h3 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:24px;line-height:1.2;letter-spacing:-0.01em">Is this too hard for me?</h3>
+<p style="margin:0;color:#33465A;line-height:1.6;text-wrap:pretty">Beginner, Intermediate and Pro levels, scored from labels and from the shape of the issue, because a "good first issue" label is sometimes a polite lie.</p>
+</div>
+</div>
+</div>
+</section>
+
+
+<!-- LEVELS (interactive) -->
+<section id="levels" style="background:#FBFCFC;border-top:1px solid #CBD5DB;border-bottom:1px solid #CBD5DB">
+<div style="max-width:1180px;margin:0 auto;padding:clamp(56px,8vw,104px) clamp(20px,4vw,40px);box-sizing:border-box">
+<h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-0.025em;text-wrap:balance;max-width:18em">Pick your level. Pick your stack. Get only what fits.</h2>
+<p style="margin:20px 0 0;color:#33465A;font-size:19px;line-height:1.55;max-width:36em;text-wrap:pretty">Try it. Choose a level and a few filters, and the sample list below narrows as you go.</p>
+
+<div style="margin-top:48px;background:#FFFFFF;border:1px solid #CBD5DB;border-radius:14px;padding:clamp(20px,3vw,36px);display:flex;flex-direction:column;gap:32px">
+
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<span style="font-weight:600;font-size:15px">Level</span>
+<div style="display:flex;flex-wrap:wrap;gap:12px">
+<button class="tier chip" type="button" data-tier="beginner" aria-pressed="true"><span class="dots" aria-hidden="true"><i class="on"></i><i></i><i></i></span><span>Beginner</span></button>
+<button class="tier chip" type="button" data-tier="intermediate" aria-pressed="false"><span class="dots" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span><span>Intermediate</span></button>
+<button class="tier chip" type="button" data-tier="pro" aria-pressed="false"><span class="dots" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span><span>Pro</span></button>
+</div>
+</div>
+
+<div class="tierinfo" data-info="beginner"><div style="display:flex;flex-direction:column;gap:8px"><span style="font-weight:700;font-size:17px">What you'll find</span><p style="margin:0;color:#33465A;line-height:1.6">Docs fixes, missing tests, and small bugs with a clear repro and a file to open. Done in an evening.</p></div><div style="display:flex;flex-direction:column;gap:8px"><span style="font-weight:700;font-size:17px">How the radar recognises it</span><p style="margin:0;color:#33465A;line-height:1.6">A good-first-issue style label, a short body, a named file, and a clear idea of what "done" looks like. Typical time: 1 to 3 hours.</p></div></div>
+<div class="tierinfo" data-info="intermediate" hidden><div style="display:flex;flex-direction:column;gap:8px"><span style="font-weight:700;font-size:17px">What you'll find</span><p style="margin:0;color:#33465A;line-height:1.6">Bugs that make you read a whole module, and small features a maintainer has already agreed to.</p></div><div style="display:flex;flex-direction:column;gap:8px"><span style="font-weight:700;font-size:17px">How the radar recognises it</span><p style="margin:0;color:#33465A;line-height:1.6">A help-wanted label, a repro with code, and a hint about where the fix lives. Typical time: a weekend.</p></div></div>
+<div class="tierinfo" data-info="pro" hidden><div style="display:flex;flex-direction:column;gap:8px"><span style="font-weight:700;font-size:17px">What you'll find</span><p style="margin:0;color:#33465A;line-height:1.6">Design-heavy features, performance work and concurrency bugs. Often a maintainer wants a proposal before any code.</p></div><div style="display:flex;flex-direction:column;gap:8px"><span style="font-weight:700;font-size:17px">How the radar recognises it</span><p style="margin:0;color:#33465A;line-height:1.6">Long discussion threads, several linked issues, and a "discuss first" note. Typical time: a week or more.</p></div></div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:28px 40px">
+<div role="group" aria-labelledby="g-langs" style="display:flex;flex-direction:column;gap:12px">
+<span id="g-langs" style="font-weight:600;font-size:15px">Language</span>
+<div style="display:flex;flex-wrap:wrap;gap:10px">
+<button class="fchip chip" type="button" data-group="langs" data-value="Python" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Python</span></button>
+<button class="fchip chip" type="button" data-group="langs" data-value="Java" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Java</span></button>
+<button class="fchip chip" type="button" data-group="langs" data-value="TypeScript" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>TypeScript</span></button>
+<button class="fchip chip" type="button" data-group="langs" data-value="Kotlin" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Kotlin</span></button>
+<button class="fchip chip" type="button" data-group="langs" data-value="Go" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Go</span></button>
+<button class="fchip chip" type="button" data-group="langs" data-value="Rust" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Rust</span></button>
+</div>
+</div>
+<div role="group" aria-labelledby="g-areas" style="display:flex;flex-direction:column;gap:12px">
+<span id="g-areas" style="font-weight:600;font-size:15px">Kind of work</span>
+<div style="display:flex;flex-wrap:wrap;gap:10px">
+<button class="fchip chip" type="button" data-group="areas" data-value="Docs" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Docs</span></button>
+<button class="fchip chip" type="button" data-group="areas" data-value="Tests" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Tests</span></button>
+<button class="fchip chip" type="button" data-group="areas" data-value="Bugs" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Bugs</span></button>
+<button class="fchip chip" type="button" data-group="areas" data-value="Features" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Features</span></button>
+</div>
+</div>
+<div role="group" aria-labelledby="g-times" style="display:flex;flex-direction:column;gap:12px">
+<span id="g-times" style="font-weight:600;font-size:15px">Time you have</span>
+<div style="display:flex;flex-wrap:wrap;gap:10px">
+<button class="fchip chip" type="button" data-group="times" data-value="Under an hour" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Under an hour</span></button>
+<button class="fchip chip" type="button" data-group="times" data-value="Half a day" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Half a day</span></button>
+<button class="fchip chip" type="button" data-group="times" data-value="A weekend" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A weekend</span></button>
+<button class="fchip chip" type="button" data-group="times" data-value="A week" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A week</span></button>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;padding-bottom:12px">
+<span id="summary" aria-live="polite" style="font-weight:700;font-size:17px">Beginner issues. Language: any. Work: any. Time: any.</span>
+<span style="font-size:13px;color:#4A5B6B">Sample data</span>
+</div>
+<div id="results"></div>
+<div id="empty" hidden style="border-top:1px solid #E1E7EB;padding:24px 0;color:#33465A">Nothing in the sample matches all of that. In the real radar this just means a quiet day, and you hear about it tomorrow instead.</div>
+<noscript><p style="color:#33465A">Turn on JavaScript to try the filters.</p></noscript>
+</div>
+
+</div>
+</div>
+</section>
+
+
+<!-- HOW IT WORKS -->
+<section id="how">
+<div style="max-width:1180px;margin:0 auto;padding:clamp(56px,8vw,104px) clamp(20px,4vw,40px);box-sizing:border-box">
+<h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-0.025em;text-wrap:balance;max-width:18em">From watchlist to inbox in five steps.</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));gap:40px 28px;margin-top:56px">
+
+<div style="border-top:2px solid #0E1B2C;padding-top:18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:15px">1</span>
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0E1B2C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14M5 11h14M5 17h9"/></svg></div>
+<h3 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:21px;line-height:1.2">Pick your repos</h3>
+<p style="margin:0;font-size:16px;color:#33465A;line-height:1.55">Add the projects you use or admire to a short watchlist.</p>
+</div>
+
+<div style="border-top:2px solid #0E1B2C;padding-top:18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:15px">2</span>
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0E1B2C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M12 15l-4-4M12 15l4-4M5 20h14"/></svg></div>
+<h3 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:21px;line-height:1.2">Fetch</h3>
+<p style="margin:0;font-size:16px;color:#33465A;line-height:1.55">Once a day, a scheduled job asks the GitHub API for open issues.</p>
+</div>
+
+<div style="border-top:2px solid #0E1B2C;padding-top:18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:15px">3</span>
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0E1B2C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg></div>
+<h3 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:21px;line-height:1.2">Check it's free</h3>
+<p style="margin:0;font-size:16px;color:#33465A;line-height:1.55">No assignee, no linked pull request, no "can I take this?" comment.</p>
+</div>
+
+<div style="border-top:2px solid #0E1B2C;padding-top:18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:15px">4</span>
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0E1B2C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/></svg></div>
+<h3 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:21px;line-height:1.2">Score and rank</h3>
+<p style="margin:0;font-size:16px;color:#33465A;line-height:1.55">Level, repo health and your stack decide what comes first.</p>
+</div>
+
+<div style="border-top:2px solid #0E1B2C;padding-top:18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:15px">5</span>
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0E1B2C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></svg></div>
+<h3 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:21px;line-height:1.2">Deliver</h3>
+<p style="margin:0;font-size:16px;color:#33465A;line-height:1.55">A short digest lands in your inbox or chat before breakfast.</p>
+</div>
+
+</div>
+</div>
+</section>
+
+<!-- REPO HEALTH -->
+<section style="border-top:1px solid #CBD5DB">
+<div style="max-width:1180px;margin:0 auto;padding:clamp(56px,8vw,104px) clamp(20px,4vw,40px);box-sizing:border-box;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:48px clamp(40px,5vw,72px);align-items:center">
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-0.025em;text-wrap:balance">We check the repo, not just the issue.</h2>
+<p style="margin:0;color:#33465A;font-size:19px;line-height:1.55;text-wrap:pretty">A perfect first issue in a project nobody maintains is a wasted weekend. Every repo gets a health score from how fast maintainers reply, how often outside pull requests get merged, and how recently anyone committed.</p>
+<p style="margin:0;color:#33465A;line-height:1.6;text-wrap:pretty">Some projects accept a change by importing it and closing your pull request. The radar knows which ones, so a merged PR never gets counted as a rejection.</p>
+</div>
+
+<div style="background:#FBFCFC;border:1px solid #CBD5DB;border-radius:14px;padding:clamp(20px,3vw,32px);display:flex;flex-wrap:wrap;align-items:center;gap:28px 32px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px;flex:none">
+<div style="width:150px;height:150px;border-radius:50%;background:conic-gradient(#2455F4 0 82%,#D5DDE3 82% 100%);display:flex;align-items:center;justify-content:center">
+<div style="width:114px;height:114px;border-radius:50%;background:#FBFCFC;display:flex;flex-direction:column;align-items:center;justify-content:center">
+<span style="font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:44px;line-height:1">82</span>
+<span style="font-size:13px;color:#4A5B6B">repo health</span>
+</div>
+</div>
+<span style="font-size:13px;color:#4A5B6B">Sample repo</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:18px;flex:1;min-width:220px">
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:15px"><span>First maintainer reply</span><span style="font-weight:600">About a day</span></div>
+<div style="height:6px;border-radius:3px;background:#D5DDE3"><div style="width:90%;height:6px;border-radius:3px;background:#0E1B2C"></div></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:15px"><span>Outside PRs merged</span><span style="font-weight:600">7 of 10</span></div>
+<div style="height:6px;border-radius:3px;background:#D5DDE3"><div style="width:70%;height:6px;border-radius:3px;background:#0E1B2C"></div></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:15px"><span>Last commit</span><span style="font-weight:600">2 days ago</span></div>
+<div style="height:6px;border-radius:3px;background:#D5DDE3"><div style="width:95%;height:6px;border-radius:3px;background:#0E1B2C"></div></div>
+</div>
+</div>
+</div>
+
+</div>
+</section>
+
+<!-- DIGEST -->
+<section style="background:#0E1B2C;color:#E6EDF3">
+<div style="max-width:1180px;margin:0 auto;padding:clamp(56px,8vw,104px) clamp(20px,4vw,40px);box-sizing:border-box;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:48px clamp(40px,5vw,72px);align-items:center">
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-0.025em;text-wrap:balance;color:#FFFFFF">Wake up to a short list.</h2>
+<p style="margin:0;color:#C3D0DC;font-size:19px;line-height:1.55;text-wrap:pretty">A scheduled job runs once a day on GitHub Actions and sends the digest to your inbox, Telegram or Discord. No dashboard to remember to open.</p>
+<p style="margin:0;color:#9FB0C0;line-height:1.6;text-wrap:pretty">Free issues first, then the status of every pull request you've opened.</p>
+</div>
+
+<div style="background:#091320;border:1px solid #243750;border-radius:12px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #243750;color:#9FB0C0;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px">firstpr digest (sample)</div>
+<pre style="margin:0;padding:20px 18px;font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;font-size:13.5px;line-height:1.8;color:#DCE6EF;overflow-x:auto;white-space:pre">Good morning. 3 free issues match you today.
+
+<span style="color:#F2B01E">Free for you</span>
+  ●○○  <span style="color:#8EAEFF">sample/tool-sdk</span>       Fix broken link in the quickstart
+  ●○○  <span style="color:#8EAEFF">sample/ui-kit</span>         Add a test for an empty result list
+  ●●○  <span style="color:#8EAEFF">sample/agent-runtime</span>  Client hangs when the server closes early
+
+<span style="color:#F2B01E">Your pull requests</span>
+  #41  approved            ready to merge
+  #38  changes requested   2 comments waiting
+  #35  quiet for 9 days    nudge drafted, your call</pre>
+</div>
+
+</div>
+</section>
+
+<!-- PULL REQUEST TRACKER -->
+<section id="prs">
+<div style="max-width:1180px;margin:0 auto;padding:clamp(56px,8vw,104px) clamp(20px,4vw,40px);box-sizing:border-box">
+<h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-0.025em;text-wrap:balance;max-width:18em">After you hit submit, we keep watching.</h2>
+<p style="margin:20px 0 0;color:#33465A;font-size:19px;line-height:1.55;max-width:38em;text-wrap:pretty">Waiting on a review is the loneliest part of open source. FirstPR tracks every pull request you open and tells you what needs you, and when it's polite to nudge.</p>
+
+<div style="margin-top:48px;max-width:920px;background:#FBFCFC;border:1px solid #CBD5DB;border-radius:14px;overflow:hidden">
+
+<div style="display:flex;flex-direction:column;gap:14px;padding:22px clamp(18px,3vw,28px)">
+<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px">
+<span style="font-weight:600;font-size:17px">Fix broken link in the quickstart</span>
+<span style="font-size:14px;color:#4A5B6B">sample/tool-sdk, #41 (sample)</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;background:#0E1B2C;color:#FFFFFF;border-radius:8px;font-size:14px">Waiting for review</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;background:#0E1B2C;color:#FFFFFF;border-radius:8px;font-size:14px">Changes requested</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;background:#0E1B2C;color:#FFFFFF;border-radius:8px;font-size:14px;font-weight:700">Approved</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border:1px solid #B8C4CC;color:#4A5B6B;border-radius:8px;font-size:14px">Merged</span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px;padding:22px clamp(18px,3vw,28px);border-top:1px solid #E1E7EB">
+<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px">
+<span style="font-weight:600;font-size:17px">Add a test for an empty result list</span>
+<span style="font-size:14px;color:#4A5B6B">sample/ui-kit, #38 (sample)</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;background:#0E1B2C;color:#FFFFFF;border-radius:8px;font-size:14px">Waiting for review</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;background:#0E1B2C;color:#FFFFFF;border-radius:8px;font-size:14px;font-weight:700">Changes requested</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border:1px solid #B8C4CC;color:#4A5B6B;border-radius:8px;font-size:14px">Approved</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border:1px solid #B8C4CC;color:#4A5B6B;border-radius:8px;font-size:14px">Merged</span>
+<span style="margin-left:8px;font-size:14px;color:#33465A">2 review comments are waiting for you.</span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px;padding:22px clamp(18px,3vw,28px);border-top:1px solid #E1E7EB">
+<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px">
+<span style="font-weight:600;font-size:17px">Handle timeout in client reconnect</span>
+<span style="font-size:14px;color:#4A5B6B">sample/agent-runtime, #35 (sample)</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;background:#0E1B2C;color:#FFFFFF;border-radius:8px;font-size:14px;font-weight:700">Waiting for review</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border:1px solid #B8C4CC;color:#4A5B6B;border-radius:8px;font-size:14px">Changes requested</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border:1px solid #B8C4CC;color:#4A5B6B;border-radius:8px;font-size:14px">Approved</span>
+<span style="display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border:1px solid #B8C4CC;color:#4A5B6B;border-radius:8px;font-size:14px">Merged</span>
+<span style="margin-left:8px;display:inline-flex;align-items:center;gap:6px;background:#FCEFC7;color:#5C4200;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px">Quiet for 9 days</span>
+</div>
+<div style="background:#FFFFFF;border:1.5px dashed #9FB0BE;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+<span style="font-weight:600;font-size:15px">Draft nudge</span>
+<p style="margin:0;color:#33465A;line-height:1.6">Hi, just checking in on this when you have a moment. Happy to change anything. Thanks for maintaining the project!</p>
+<span style="font-size:14px;color:#4A5B6B">FirstPR writes the draft. You decide whether to send it, and it never comments for you.</span>
+</div>
+</div>
+
+</div>
+</div>
+</section>
+
+<!-- CLOSING CTA -->
+<section id="start" style="background:#2455F4;color:#FFFFFF">
+<div style="max-width:1180px;margin:0 auto;padding:clamp(64px,9vw,120px) clamp(20px,4vw,40px);box-sizing:border-box;display:flex;flex-direction:column;align-items:flex-start;gap:28px">
+<h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(38px,6vw,76px);line-height:1.02;letter-spacing:-0.03em;text-wrap:balance;max-width:12em">Fork it till you make it.</h2>
+<p style="margin:0;font-size:clamp(18px,1.6vw,21px);line-height:1.55;max-width:36em;text-wrap:pretty">A merged pull request is public proof that you can read someone else's code, take feedback and ship. It starts with one small, unclaimed issue.</p>
+<a class="btn-light" href="https://github.com/MuskanScripts/IssueRadar#quick-start-windows-powershell" style="display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 28px;background:#FFFFFF;color:#0E1B2C;border-radius:10px;font-weight:700;font-size:17px;text-decoration:none">Start your radar</a>
+<p style="margin:0;font-size:15px">Code, docs and issues: <a href="https://github.com/MuskanScripts/IssueRadar" style="color:#FFFFFF;font-weight:600;text-underline-offset:4px">github.com/MuskanScripts/IssueRadar</a></p>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer style="max-width:1180px;margin:0 auto;padding:36px clamp(20px,4vw,40px) 48px;box-sizing:border-box;font-size:14px;line-height:1.6;color:#4A5B6B">
+FirstPR is a personal open-source project by <a href="https://github.com/MuskanScripts" style="color:inherit">Muskan</a>. MIT licence. Every screen on this page shows sample data, and the repo names are made up. Not affiliated with GitHub.
+</footer>
+
+</div>
+<script>
+(function () {
+  // Sample items only. The real radar ranks live issues from repos you watch.
+  var ISSUES = [
+      { tier: 'beginner', title: 'Fix broken link in the quickstart', repo: 'sample/tool-sdk', lang: 'Python', area: 'Docs', time: 'Under an hour' },
+      { tier: 'beginner', title: 'Add a test for an empty result list', repo: 'sample/ui-kit', lang: 'TypeScript', area: 'Tests', time: 'Under an hour' },
+      { tier: 'beginner', title: 'Document the retry settings', repo: 'sample/payments-lib', lang: 'Java', area: 'Docs', time: 'Under an hour' },
+      { tier: 'beginner', title: 'Cover the timeout branch with a test', repo: 'sample/agent-runtime', lang: 'Python', area: 'Tests', time: 'Half a day' },
+      { tier: 'intermediate', title: 'Client hangs when the server closes early', repo: 'sample/agent-runtime', lang: 'Python', area: 'Bugs', time: 'Half a day' },
+      { tier: 'intermediate', title: 'NullPointerException when the config has no profile', repo: 'sample/payments-lib', lang: 'Java', area: 'Bugs', time: 'A weekend' },
+      { tier: 'intermediate', title: 'Add pagination to the list endpoint', repo: 'sample/ledger-app', lang: 'Kotlin', area: 'Features', time: 'A weekend' },
+      { tier: 'intermediate', title: 'Dropdown loses focus on re-render', repo: 'sample/ui-kit', lang: 'TypeScript', area: 'Bugs', time: 'Half a day' },
+      { tier: 'pro', title: 'Support streaming responses in the transport layer', repo: 'sample/agent-runtime', lang: 'Python', area: 'Features', time: 'A week' },
+      { tier: 'pro', title: 'Race condition in the job scheduler', repo: 'sample/queue-core', lang: 'Go', area: 'Bugs', time: 'A weekend' },
+      { tier: 'pro', title: 'Zero-copy parsing for large payloads', repo: 'sample/wire-format', lang: 'Rust', area: 'Features', time: 'A week' },
+      { tier: 'pro', title: 'Reactive client for the REST adapter', repo: 'sample/payments-lib', lang: 'Java', area: 'Features', time: 'A week' }
+    ];
+  var LABELS = { beginner: 'Beginner', intermediate: 'Intermediate', pro: 'Pro' };
+  var state = { tier: 'beginner', langs: [], areas: [], times: [] };
+  var results = document.getElementById('results');
+  var empty = document.getElementById('empty');
+  var summary = document.getElementById('summary');
+
+  function say(list) { return list.length ? list.join(', ') : 'any'; }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text) node.textContent = text;
+    return node;
+  }
+  function render() {
+    document.querySelectorAll('[data-tier]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.tier === state.tier));
+    });
+    document.querySelectorAll('[data-info]').forEach(function (d) { d.hidden = d.dataset.info !== state.tier; });
+    document.querySelectorAll('[data-group]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(state[b.dataset.group].indexOf(b.dataset.value) !== -1));
+    });
+    var match = ISSUES.filter(function (i) {
+      return i.tier === state.tier &&
+        (!state.langs.length || state.langs.indexOf(i.lang) !== -1) &&
+        (!state.areas.length || state.areas.indexOf(i.area) !== -1) &&
+        (!state.times.length || state.times.indexOf(i.time) !== -1);
+    });
+    summary.textContent = LABELS[state.tier] + ' issues. Language: ' + say(state.langs) +
+      '. Work: ' + say(state.areas) + '. Time: ' + say(state.times) + '.';
+    results.replaceChildren();
+    match.forEach(function (i) {
+      var row = el('div', 'row');
+      var left = el('div');
+      left.style.cssText = 'display:flex;flex-direction:column;gap:8px;min-width:0';
+      var title = el('span', '', i.title);
+      title.style.cssText = 'font-weight:600;font-size:17px';
+      var meta = el('span');
+      meta.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:14px;color:#4A5B6B';
+      meta.append(el('span', '', i.repo), el('span', 'tag', i.lang), el('span', 'tag', i.area), el('span', 'tag', i.time));
+      left.append(title, meta);
+      row.append(left, el('span', 'free', 'Free'));
+      results.append(row);
+    });
+    empty.hidden = match.length > 0;
+  }
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (!button) return;
+    if (button.dataset.tier) {
+      state.tier = button.dataset.tier;
+    } else if (button.dataset.group) {
+      var list = state[button.dataset.group];
+      var at = list.indexOf(button.dataset.value);
+      if (at === -1) list.push(button.dataset.value); else list.splice(at, 1);
+    } else {
+      return;
+    }
+    render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

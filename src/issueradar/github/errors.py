@@ -62,5 +62,9 @@ class GraphQLQueryError(GitHubError):
         super().__init__(f"GraphQL query failed: {first}")
 
 
+class NetworkError(GitHubError):
+    """GitHub could not be reached at all (offline, DNS, proxy or certificate trouble)."""
+
+
 class GraphQLTimeout(GitHubError):
     """GitHub stopped a GraphQL query after its server-side time limit."""

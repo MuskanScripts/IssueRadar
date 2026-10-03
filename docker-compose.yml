@@ -1,0 +1,39 @@
+# Dashboard plus a daily job. Your config and skills live in ./config,
+# data in a named volume.
+#
+#   Copy-Item .env.example .env          # then put your token in .env
+#   docker compose up -d
+#   docker compose exec app firstpr watch add owner/repo
+#
+# Then open http://127.0.0.1:8765
+
+services:
+  app:
+    image: ghcr.io/muskanscripts/issueradar:latest
+    build: .
+    env_file: .env
+    environment:
+      FIRSTPR_SKILLS: /config/skills.yaml
+    command: ["firstpr", "serve", "--host", "0.0.0.0", "--port", "8765", "--config", "/config/firstpr.yaml"]
+    ports:
+      - "127.0.0.1:8765:8765"   # only reachable from this machine
+    volumes:
+      - data:/data
+      - ./config:/config:ro
+    restart: unless-stopped
+
+  daily:
+    image: ghcr.io/muskanscripts/issueradar:latest
+    build: .
+    env_file: .env
+    environment:
+      FIRSTPR_SKILLS: /config/skills.yaml
+    # Sync, track PRs and send the digest once a day.
+    entrypoint: ["sh", "-c", "while true; do firstpr daily --config /config/firstpr.yaml; sleep 86400; done"]
+    volumes:
+      - data:/data
+      - ./config:/config:ro
+    restart: unless-stopped
+
+volumes:
+  data:

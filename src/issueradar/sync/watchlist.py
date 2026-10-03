@@ -31,6 +31,16 @@ def normalise_repo(value: str) -> str:
     return text
 
 
+def read_file(text: str) -> list[str]:
+    """Repos from a watchlist file: one per line, blank lines and ``#`` comments skipped."""
+    names = []
+    for line in text.splitlines():
+        entry = line.split("#", 1)[0].strip()
+        if entry:
+            names.append(entry)
+    return names
+
+
 def add(db: Database, repo: str, user_id: int = LOCAL_USER_ID) -> tuple[str, bool]:
     name = normalise_repo(repo)
     with db.sessions.begin() as session:

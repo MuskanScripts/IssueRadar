@@ -5,12 +5,21 @@ from __future__ import annotations
 from html import escape
 
 from issueradar.brand import BRAND
-from issueradar.digest.model import Digest, IssueItem
+from issueradar.digest.model import Digest, IssueItem, PullItem
 
 
 def _issue_md(item: IssueItem) -> str:
     link = f"[{item.title}]({item.url})" if item.url else item.title
     return f"- `{item.dots}` **{item.repo}#{item.number}** {link}. {item.state}. {item.why}"
+
+
+def _pr_detail(pr: PullItem, sep: str) -> str:
+    """Status plus what it needs, without saying the same thing twice
+    ("Merged. Merged. Nothing to do." reads badly)."""
+    first = pr.status.split(" ", 1)[0].lower()
+    if pr.needs_you.lower().startswith(first):
+        return pr.needs_you
+    return f"{pr.status}{sep}{pr.needs_you}"
 
 
 def markdown(digest: Digest) -> str:
@@ -23,7 +32,7 @@ def markdown(digest: Digest) -> str:
         lines += ["## Your pull requests", ""]
         for pr in digest.pulls:
             link = f"[{pr.title}]({pr.url})" if pr.url else pr.title
-            lines.append(f"- **{pr.repo}#{pr.number}** {link}. {pr.status}. {pr.needs_you}")
+            lines.append(f"- **{pr.repo}#{pr.number}** {link}. {_pr_detail(pr, '. ')}")
             if pr.nudge:
                 lines.append(f'  - Nudge draft (copy it if you want to send it): "{pr.nudge}"')
         lines.append("")
@@ -52,7 +61,7 @@ def text(digest: Digest) -> str:
     if digest.pulls:
         lines.append("Your pull requests")
         for pr in digest.pulls:
-            lines.append(f"  {pr.repo}#{pr.number}  {pr.status}: {pr.needs_you}")
+            lines.append(f"  {pr.repo}#{pr.number}  {_pr_detail(pr, ': ')}")
             if pr.nudge:
                 lines.append(f'       Nudge draft: "{pr.nudge}"')
         lines.append("")

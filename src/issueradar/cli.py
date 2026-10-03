@@ -289,18 +289,40 @@ def _measure_etag(settings: Settings, repo: str) -> None:
 
 @watch_app.command("add")
 def watch_add(
-    repos: Annotated[list[str], typer.Argument(help="owner/name or a GitHub URL")],
+    repos: Annotated[list[str] | None, typer.Argument(help="owner/name or a GitHub URL")] = None,
+    file: Annotated[
+        Path | None,
+        typer.Option("--file", help="A text file with one repo per line (# starts a comment)"),
+    ] = None,
+    exact: Annotated[
+        bool, typer.Option("--exact", help="Also stop watching repos that are not listed")
+    ] = False,
     config: ConfigOption = None,
 ) -> None:
     """Start watching one or more repositories."""
+    names = list(repos or [])
+    if file is not None:
+        if not file.is_file():
+            console.print(f"[red]{file} does not exist.[/red]")
+            raise typer.Exit(code=2)
+        names += watchlist.read_file(file.read_text(encoding="utf-8"))
+    if not names:
+        console.print("Name at least one repo, or pass --file.")
+        raise typer.Exit(code=2)
     db = _database(_settings(config))
-    for repo in repos:
+    for repo in names:
         try:
             name, added = watchlist.add(db, repo)
         except watchlist.WatchlistError as exc:
             console.print(f"[red]{exc}[/red]")
             raise typer.Exit(code=2) from exc
         console.print(f"Watching {name}." if added else f"Already watching {name}.")
+    if exact:
+        keep = {watchlist.normalise_repo(n).lower() for n in names}
+        for name in watchlist.list_watched(db):
+            if name.lower() not in keep:
+                watchlist.remove(db, name)
+                console.print(f"Stopped watching {name}.")
 
 
 @watch_app.command("remove")
@@ -780,7 +802,9 @@ def digest(
         console.print(renderers[fmt](built), markup=False, highlight=False)
         return
     if built.is_empty and not built.quiet_message:
-        console.print("Nothing new since the last digest, so nothing was sent.")
+        message = "Nothing new since the last digest, so nothing was sent."
+        console.print(message)
+        _step_summary(f"{BRAND.name}: {message}")
         return
     try:
         channels = enabled_channels(settings.digest)
@@ -799,8 +823,17 @@ def digest(
             console.print(f"[red]{channel.name}: {exc}[/red]")
     if delivered:
         record_sent(db, built, delivered)
+        _step_summary(digest_render.markdown(built))
     if len(delivered) < len(channels):
         raise typer.Exit(code=1)
+
+
+def _step_summary(markdown: str) -> None:
+    """In GitHub Actions, show the result on the run's page too."""
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with Path(summary).open("a", encoding="utf-8") as handle:
+            handle.write(markdown.rstrip() + "\n")
 
 
 def _open_unreviewed() -> int:
@@ -1052,6 +1085,43 @@ def export(
         console.print(f"Wrote {len(data['issues'])} issues to {out}.")  # type: ignore[arg-type]
     else:
         console.print(text, markup=False, highlight=False)
+
+
+@app.command()
+def daily(
+    config: ConfigOption = None,
+    skills: SkillsOption = None,
+    author: Annotated[
+        str | None,
+        typer.Option(
+            "--author",
+            envvar=BRAND.env("AUTHOR"),
+            help="Your GitHub login, for PR tracking (needed with GITHUB_TOKEN in Actions)",
+        ),
+    ] = None,
+    skip_prs: Annotated[bool, typer.Option("--skip-prs", help="Don't track pull requests")] = False,
+) -> None:
+    """Sync, track your pull requests and send the digest. What the scheduled job runs."""
+    steps: list[tuple[str, Callable[[], None]]] = [("Sync", lambda: sync(config=config))]
+    if not skip_prs:
+        steps.append(
+            (
+                "Your pull requests",
+                lambda: prs(refresh=True, repo=None, author=author, show=None, config=config),
+            )
+        )
+    steps.append(("Digest", lambda: digest(send=True, fmt="text", config=config, skills=skills)))
+    failed = []
+    for name, step in steps:
+        console.rule(name)
+        try:
+            step()
+        except typer.Exit as exc:
+            if exc.exit_code not in (0, None):
+                failed.append(name)
+    if failed:
+        console.print(f"[yellow]Finished with problems in: {', '.join(failed)}.[/yellow]")
+        raise typer.Exit(code=1)
 
 
 def _web_dist() -> Path | None:

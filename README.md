@@ -15,12 +15,21 @@ GitHub**: it never comments, opens pull requests, assigns, stars or follows. Whe
 a pull request goes quiet it drafts a polite nudge for you to copy, and you
 decide whether to send it.
 
-> **Status: milestone M5 (dashboard).** Watch repositories, sync them, see
-> which issues are free and right for you on the radar, track the pull requests
-> you open, and get a daily digest. Packaging and the GitHub Action template
-> arrive in M6. See [PLAN.md](PLAN.md) for the roadmap.
+> **Status: milestone M6 (distribution).** Everything runs locally, in Docker,
+> or as a daily GitHub Actions job. See [ROADMAP.md](ROADMAP.md) for what is
+> next.
 >
 > "FirstPR" is a working name.
+
+## Three ways to run it
+
+| You want | Use | Guide |
+| --- | --- | --- |
+| A daily digest, no server, nothing installed | GitHub Actions template | [docs/github-action.md](docs/github-action.md) |
+| The dashboard on your own machine | `pip install firstpr` | [docs/self-hosting.md](docs/self-hosting.md) |
+| It always on, on a home server | Docker Compose | [docs/self-hosting.md](docs/self-hosting.md#2-docker-compose) |
+
+The rest of this page is for running it from a clone of the source.
 
 ## Quick start (Windows PowerShell)
 
@@ -74,6 +83,10 @@ firstpr digest --send     # writes digests/latest.md and digests/feed.xml
 ```
 
 Email, Telegram, Discord and Slack are set up in [docs/digest.md](docs/digest.md).
+
+`firstpr daily` runs sync, your pull requests and `digest --send` in one go.
+It is what the Action, the Docker job and a scheduled task run. A watchlist
+can also live in a file: `firstpr watch add --file watchlist.txt --exact`.
 
 ### Your pull requests
 
@@ -140,7 +153,8 @@ npx playwright install chromium   # once
 npm run e2e                       # smoke test and accessibility checks
 ```
 
-CI runs all of these on every push and pull request, plus a secret scan.
+CI runs all of these on every push and pull request, plus a container build
+and a secret scan. The Action is tested by `action-selftest.yml`.
 
 ## Project layout
 
@@ -158,8 +172,13 @@ src/issueradar/        Python core: CLI, config, models, demo data
 eval/                  labelling template for the evaluation harness
 tests/                 Python tests (never touch the network)
   fixtures/github/     recorded and documented GitHub responses
-scripts/               fixture recorder
+scripts/               fixture recorder, benchmarks, release helpers
 web/                   React dashboard (Vite, TypeScript, Tailwind CSS)
+site/                  landing page (static, GitHub Pages)
+template/              files for the GitHub Actions template repo
+action.yml             the GitHub Action
+Dockerfile             container image; docker-compose.yml runs it
+config/                settings mounted into the containers
 docs/                  architecture, ADRs, GitHub API notes, human tasks
 examples/              sample config and skills.yaml
 ```
@@ -171,6 +190,10 @@ examples/              sample config and skills.yaml
 - [RESULTS.md](RESULTS.md): measured numbers, each with the command that produced it
 - [docs/scoring.md](docs/scoring.md): exactly how every score is computed
 - [docs/digest.md](docs/digest.md): the daily digest and its channels
+- [docs/github-action.md](docs/github-action.md): run it on GitHub Actions
+- [docs/self-hosting.md](docs/self-hosting.md): pip, Docker Compose, scheduled tasks
+- [ROADMAP.md](ROADMAP.md): what is done and what is next
+- [CHANGELOG.md](CHANGELOG.md): what changed in each release
 - [eval/README.md](eval/README.md): how to label issues and measure the engines
 - [docs/architecture.md](docs/architecture.md): how the pieces fit
 - [docs/design-tokens.md](docs/design-tokens.md): colours, type and the rules for using them

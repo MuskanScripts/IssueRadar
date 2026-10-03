@@ -1,0 +1,36 @@
+name: Daily digest
+
+on:
+  schedule:
+    - cron: "17 6 * * *"   # every day at 06:17 UTC; change it to suit your morning
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: MuskanScripts/IssueRadar@v0
+        with:
+          # GITHUB_TOKEN reads public repos. For a higher search limit, create a
+          # fine-grained token with no extra permissions, save it as the secret
+          # FIRSTPR_GITHUB_TOKEN and use: token: ${{ secrets.FIRSTPR_GITHUB_TOKEN }}
+          token: ${{ secrets.FIRSTPR_GITHUB_TOKEN || github.token }}
+          watchlist: watchlist.txt
+          config: firstpr.yaml
+          skills: skills.yaml
+        env:
+          # Only needed for the channels you turn on in firstpr.yaml.
+          FIRSTPR_SMTP_PASSWORD: ${{ secrets.FIRSTPR_SMTP_PASSWORD }}
+          FIRSTPR_TELEGRAM_TOKEN: ${{ secrets.FIRSTPR_TELEGRAM_TOKEN }}
+          FIRSTPR_DISCORD_WEBHOOK: ${{ secrets.FIRSTPR_DISCORD_WEBHOOK }}
+          FIRSTPR_SLACK_WEBHOOK: ${{ secrets.FIRSTPR_SLACK_WEBHOOK }}

@@ -1,0 +1,71 @@
+name: Action self-test
+
+# Runs the action exactly the way the template repo does, against two public
+# repos, with nothing but the built-in GITHUB_TOKEN.
+on:
+  push:
+    branches: [main]
+    paths: ["action.yml", "template/**", "src/**", "pyproject.toml", ".github/workflows/action-selftest.yml"]
+  pull_request:
+    paths: ["action.yml", "template/**", "src/**", "pyproject.toml", ".github/workflows/action-selftest.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lay out the template like a user's repo
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path user-repo | Out-Null
+          Copy-Item template/firstpr.yaml, template/skills.yaml user-repo/
+          @('MuskanScripts/IssueRadar', 'modelcontextprotocol/python-sdk') |
+            Set-Content user-repo/watchlist.txt -Encoding utf8
+
+      # A cold run, like a user's first day: it must write a digest.
+      - name: Run the action
+        id: radar
+        uses: ./
+        with:
+          watchlist: user-repo/watchlist.txt
+          config: user-repo/firstpr.yaml
+          skills: user-repo/skills.yaml
+          author: MuskanScripts
+          cache: "false"
+
+      - name: Check the digest was written
+        shell: pwsh
+        run: |
+          $digest = '${{ steps.radar.outputs.digest }}'
+          if (-not $digest -or -not (Test-Path $digest)) { throw "No digest was written" }
+          if (-not (Test-Path digests/feed.xml)) { throw "No RSS feed" }
+          Get-Content $digest -TotalCount 40
+          Copy-Item $digest "$env:RUNNER_TEMP/first.md"
+
+      # The next day with nothing new: it must send nothing again and still succeed.
+      - name: Run the action again on the same database
+        id: again
+        uses: ./
+        with:
+          watchlist: user-repo/watchlist.txt
+          config: user-repo/firstpr.yaml
+          skills: user-repo/skills.yaml
+          author: MuskanScripts
+          cache: "false"
+          upload-artifact: "false"
+
+      - name: Check nothing was repeated
+        shell: pwsh
+        run: |
+          $digest = '${{ steps.again.outputs.digest }}'
+          if (-not $digest) { Write-Output "Nothing new, nothing sent."; exit 0 }
+          # Something changed between the two runs. Only new issues may appear.
+          $links = { param($file) Select-String -Path $file -Pattern '\(https://github\.com/[^)]+/issues/\d+\)' -AllMatches | ForEach-Object { $_.Matches.Value } }
+          $repeated = (& $links "$env:RUNNER_TEMP/first.md") | Where-Object { (& $links $digest) -contains $_ }
+          if ($repeated) { throw "Issues sent twice: $($repeated -join ', ')" }

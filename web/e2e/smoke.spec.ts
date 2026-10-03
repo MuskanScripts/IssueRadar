@@ -13,6 +13,15 @@ const PAGES = [
 
 async function noSeriousViolations(page: Page, theme: "light" | "dark") {
   await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+  // Buttons fade between theme colours; check the colours they end on, not a frame mid-fade.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a instanceof CSSTransition)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(

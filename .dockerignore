@@ -1,0 +1,17 @@
+.git
+.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+web/node_modules
+web/dist
+web/test-results
+web/playwright-report
+src/issueradar/web
+digests
+*.sqlite*
+.env
+site
+template
+docs
