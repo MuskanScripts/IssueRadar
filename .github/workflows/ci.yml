@@ -66,6 +66,10 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Install Chromium for the smoke test
+        run: npx playwright install --with-deps chromium
+      - name: Smoke test and accessibility checks (demo mode)
+        run: npm run e2e
 
   package:
     name: Build Python package

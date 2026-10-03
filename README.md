@@ -15,10 +15,10 @@ GitHub**: it never comments, opens pull requests, assigns, stars or follows. Whe
 a pull request goes quiet it drafts a polite nudge for you to copy, and you
 decide whether to send it.
 
-> **Status: milestone M4 (PR tracker).** Watch repositories, sync them, see
-> which issues are free and right for you, track the pull requests you open,
-> and get a daily digest by RSS, Markdown, email, Telegram, Discord or Slack.
-> The web dashboard arrives in M5. See [PLAN.md](PLAN.md) for the roadmap.
+> **Status: milestone M5 (dashboard).** Watch repositories, sync them, see
+> which issues are free and right for you on the radar, track the pull requests
+> you open, and get a daily digest. Packaging and the GitHub Action template
+> arrive in M6. See [PLAN.md](PLAN.md) for the roadmap.
 >
 > "FirstPR" is a working name.
 
@@ -95,7 +95,7 @@ once, then activate again:
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-### Dashboard (demo data)
+### Dashboard
 
 From the repository root:
 
@@ -103,11 +103,20 @@ From the repository root:
 fnm use
 cd web
 npm ci
-npm run dev
+npm run build
+cd ..
+firstpr serve
 ```
 
-Open http://localhost:5173. `fnm use` picks Node 22 from `.nvmrc`
-(run `fnm install 22` first if you don't have it).
+Open http://127.0.0.1:8765. `fnm use` picks Node 22 from `.nvmrc` (run
+`fnm install 22` first if you don't have it). Add `?demo=1` to the address, or
+use the switch in Settings, to see bundled demo data with no token.
+
+While working on the dashboard itself, run `firstpr serve` in one window and
+`npm run dev` in `web/` in another, then open http://localhost:5173.
+
+Keys: `j` and `k` move through the list, `o` opens an issue, `x` dismisses,
+`s` snoozes, `/` searches, `Ctrl+K` jumps anywhere.
 
 ## Run the checks
 
@@ -127,6 +136,8 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npx playwright install chromium   # once
+npm run e2e                       # smoke test and accessibility checks
 ```
 
 CI runs all of these on every push and pull request, plus a secret scan.

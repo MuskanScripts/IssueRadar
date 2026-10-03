@@ -25,11 +25,14 @@ export default defineConfig({
   server: {
     port: 5173,
     fs: { allow: [".", core] },
+    // `firstpr serve` runs the API on 8765; the dev server forwards /api to it.
+    proxy: { "/api": "http://127.0.0.1:8765" },
   },
   test: {
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    exclude: ["e2e/**", "node_modules/**"],
   },
 });

@@ -29,6 +29,7 @@ landing page.
 | `amber-ink` | `#5C4200` | `#F8D47A` | Text on `amber-tint` |
 | `on-amber` | `#0E1B2C` | `#0E1B2C` | Text on `amber` |
 | `focus` | `#0E1B2C` | `#EEF2F5` | Focus outline (3px) |
+| `chart-1` | `#2455F4` | `#5B7FFF` | The one chart series colour; both pass the dataviz palette checks against their surface |
 
 The dark theme follows the system setting unless the user picks Light or Dark.
 

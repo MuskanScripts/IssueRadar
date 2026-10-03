@@ -130,6 +130,27 @@ says nothing about real repositories. Linux build container, Python 3.13,
 Markdown file and the RSS feed; the second prints "Nothing new since the last
 digest, so nothing was sent." and the feed file is byte-for-byte unchanged.
 
+## M5: dashboard
+
+**First load.** Target: under 2 seconds locally. Built dashboard served by
+`npm run preview`, demo mode, a fresh browser context each time (no cache),
+Chromium, Linux build container, 2026-10-02. Time from navigation to the first
+issue row on the radar page: 193, 214, 199, 158 and 191 ms. The `load` event
+fired at 54 ms. With a real database the API adds its own time; the ranking
+behind it is the one measured in M3 (about 2 s for 5,000 issues).
+
+**Accessibility.** `npm run e2e` runs axe (WCAG 2.0 A and AA, 2.1 AA) on all
+seven screens in light and dark themes, on a desktop and a phone viewport:
+0 serious or critical violations. The first run found one (the Insights chart
+was inside an `aria-hidden` region but contained a focusable element); it was
+fixed by labelling the chart as a figure instead of hiding it.
+
+**Keyboard.** The same suite runs the main flow by keyboard alone: `/` to
+search, `j` to move, `o` to open the drawer, `Escape` to close it, `x` to
+dismiss, `Ctrl+K` to jump to another page.
+
+**Phone width.** No horizontal scrolling on any screen at 412 px (Pixel 7 viewport).
+
 ## M4: PR statuses compared with github.com
 
 **Done when:** statuses match what github.com shows for at least 5 real PRs.

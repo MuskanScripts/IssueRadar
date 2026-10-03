@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (M5)
+
+- Local API (FastAPI, OpenAPI at /api/docs) and `firstpr serve`, bound to 127.0.0.1 by default.
+- Dashboard: Radar with a one-time sweep, keyboard-friendly virtualised list, issue drawer with every reason, Repos, My PRs board with nudge drafts, Profile editor, Digest preview, Insights, Settings.
+- Command palette (Ctrl+K), shortcuts (j, k, o, x, s, /), saved views, density toggle, light and dark themes.
+- Demo mode in the browser with no token or server.
+- Playwright smoke test with axe checks on every screen, in CI.
+
 ### Added (M4)
 
 - PR tracker: finds your PRs (search, or one repo's list) and derives a status from the PR, its reviews, checks and timeline.
