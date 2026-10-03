@@ -97,6 +97,23 @@ async def test_pull_items_and_alerts(db: Database, settings: Settings, synced: F
     assert any("no push for" in a.text for a in digest.alerts)
 
 
+def test_first_pr_digest_skips_already_closed_prs(db: Database, settings: Settings) -> None:
+    def pr(n: int, status: str, *, closed: bool) -> PullItem:
+        return PullItem(f"pr:o/r#{n}", "o/r", n, f"PR {n}", None, status, "", status, closed=closed)
+
+    pulls = [pr(1, "Waiting for review", closed=False), pr(2, "Merged", closed=True)]
+    first = builder(db, settings, pulls=lambda: pulls).build()
+    assert [p.number for p in first.pulls] == [1]  # yesterday's merges are history, not news
+    record_sent(db, first, ["markdown"])
+
+    # From then on a PR that closes is news, once.
+    pulls = [pr(1, "Merged", closed=True), pr(3, "Closed unmerged", closed=True)]
+    second = builder(db, settings, pulls=lambda: pulls).build()
+    assert [(p.number, p.status) for p in second.pulls] == [(1, "Merged"), (3, "Closed unmerged")]
+    record_sent(db, second, ["markdown"])
+    assert builder(db, settings, pulls=lambda: pulls).build().pulls == []
+
+
 def sample_digest() -> Digest:
     from issueradar.digest.model import Alert, IssueItem
 

@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The first digest with pull requests lists only open ones, not everything merged or closed in the last day.
 - GitHub Actions moved to their Node 24 versions everywhere, including `action.yml` and the template workflow, so runs no longer show the Node 20 deprecation warning.
 - Dev tools: pytest up to 9, pytest-cov up to 7, mypy up to 2, rich up to 15; jsdom 30 and the newest `@types/node` 22 for the dashboard.
 

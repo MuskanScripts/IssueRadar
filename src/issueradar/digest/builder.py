@@ -123,7 +123,13 @@ class DigestBuilder:
                 digest.new_since.append(item)
 
         if self.pulls is not None:
+            # The first digest with pull requests shows the ones still open. PRs that
+            # closed before then are history, not news; a first run would otherwise
+            # list everything merged in the last day.
+            first = not any(key.startswith("pr:") for key in blocked)
             for pull in self.pulls():
+                if first and pull.closed:
+                    continue
                 if self._is_new(pull.key, pull.state_hash, blocked):
                     digest.pulls.append(pull)
 
