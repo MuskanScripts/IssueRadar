@@ -12,8 +12,9 @@ Keep this list current. Tick items when done.
   `firstpr watch add ...` and run `firstpr sync` twice.
 - [ ] **Record a few more real fixtures** with `python scripts/record_fixtures.py owner/repo`
   (repos with real issues and human PRs), so M2 tests use more than one repo.
-- [ ] **Verify the starter packs** with `firstpr pack verify <name>` for each pack and set
-  `verified: true` in the pack file when every repo looks active and open to outside PRs.
+- [ ] **Verify the starter packs.** python-tooling and java-spring are done (RESULTS.md). Still to do:
+  re-run `firstpr pack verify ai-agents-and-mcp`, and find better repos for web-react with
+  `firstpr pack verify --repo owner/name` before marking it verified.
 - [ ] **Label at least 50 issues** with `firstpr eval sample` and `eval/README.md`, then run
   `firstpr eval run eval/labels.csv` and add the numbers to `RESULTS.md`.
 - [ ] **Close Dependabot PRs #12 and #13** (React 19). The project is on React 18; Dependabot is

@@ -22,10 +22,12 @@ from __future__ import annotations
 
 import re
 import statistics
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from issueradar.config.settings import HealthSettings
+from issueradar.engine.rules import RepoRules
 from issueradar.engine.types import Reason
 
 
@@ -57,6 +59,20 @@ class HealthResult:
     parts: dict[str, float | None]
     reasons: list[Reason] = field(default_factory=list)
     flags: RepoFlags = field(default_factory=RepoFlags)
+
+
+def outside_pr_outcome(*, merged: bool, labels: Iterable[str], rules: RepoRules) -> str:
+    """How a closed outside pull request ended: merged, accepted_by_bot or closed.
+
+    Some projects accept a change by importing it with a bot and closing the PR
+    (repo rules name the label they use), so a closed PR isn't always a rejection.
+    """
+    if merged:
+        return "merged"
+    bot = rules.accepted_by_bot
+    if bot and bot.label and bot.label.lower() in {label.lower() for label in labels}:
+        return "accepted_by_bot"
+    return "closed"
 
 
 def _scale(value: float, good: float, bad: float) -> float:

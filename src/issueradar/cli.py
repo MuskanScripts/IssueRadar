@@ -42,6 +42,7 @@ from issueradar.storage.etag_cache import SqlEtagCache
 from issueradar.sync import SyncService, watchlist
 from issueradar.sync.enrich import Enricher
 from issueradar.sync.etag_check import measure
+from issueradar.sync.pack_check import RepoCheck, check_repo
 from issueradar.sync.single import IssueUrlError, ensure_issue, is_stored, parse_issue_ref
 
 T = TypeVar("T")
@@ -723,55 +724,59 @@ def pack_add(name: str, config: ConfigOption = None) -> None:
 
 
 @pack_app.command("verify")
-def pack_verify(name: str, config: ConfigOption = None) -> None:
-    """Check each repo in a pack: active, open to outside PRs, has contributor docs."""
+def pack_verify(
+    name: Annotated[str | None, typer.Argument(help="A pack from `pack list`")] = None,
+    repo: Annotated[
+        list[str] | None,
+        typer.Option("--repo", help="Also check this repo (owner/name), e.g. a pack candidate"),
+    ] = None,
+    config: ConfigOption = None,
+) -> None:
+    """Check repos for a pack: active, open to outside PRs, has contributor docs."""
     packs = load_packs()
-    if name not in packs:
+    if name is not None and name not in packs:
         console.print(f"[red]No pack '{name}'. Try `{BRAND.cli} pack list`.[/red]")
         raise typer.Exit(code=2)
+    repos = list(packs[name].repos) if name else []
+    try:
+        repos += [watchlist.normalise_repo(r) for r in repo or []]
+    except watchlist.WatchlistError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+    if not repos:
+        console.print(f"Name a pack, or pass --repo owner/name. Packs: `{BRAND.cli} pack list`.")
+        raise typer.Exit(code=2)
     settings = _settings(config)
-    maintainers = {a.upper() for a in settings.availability.maintainer_associations}
+    rules = _rules()
 
-    async def check() -> list[tuple[str, str, str, str]]:
-        rows = []
+    async def check() -> list[RepoCheck]:
         async with _client(settings, None) as client:
-            for repo in packs[name].repos:
-                try:
-                    data = (await client.get(f"/repos/{repo}")).data
-                    pushed = (data.get("pushed_at") or "")[:10]
-                    active = "archived" if data.get("archived") else f"last push {pushed}"
-                    community = (await client.get(f"/repos/{repo}/community/profile")).data
-                    docs = "yes" if (community.get("files") or {}).get("contributing") else "no"
-                    closed = (
-                        await client.get(
-                            f"/repos/{repo}/pulls",
-                            params={
-                                "state": "closed",
-                                "per_page": 100,
-                                "sort": "updated",
-                                "direction": "desc",
-                            },
-                        )
-                    ).data
-                    outside = [
-                        p
-                        for p in closed
-                        if (p.get("author_association") or "").upper() not in maintainers
-                        and (p.get("user") or {}).get("type") != "Bot"
-                    ]
-                    merged = sum(1 for p in outside if p.get("merged_at"))
-                    rows.append((repo, active, f"{merged} of {len(outside)} merged", docs))
-                except GitHubError as exc:
-                    rows.append((repo, f"error: {exc}", "", ""))
-        return rows
+            return [await check_repo(client, r, settings, rules) for r in repos]
 
-    table = Table(title=f"Pack {name}", title_justify="left")
-    for column in ("Repo", "Active", "Outside PRs (last 100 closed)", "CONTRIBUTING"):
+    table = Table(title=f"Pack {name}" if name else "Repos", title_justify="left")
+    for column in ("Repo", "Active", "Outside PRs accepted (last 100 closed)", "CONTRIBUTING"):
         table.add_column(column)
-    for row in _run(check):
-        table.add_row(*row)
+    for result in _run(check):
+        if result.error:
+            table.add_row(result.repo, f"error: {result.error}", "", "")
+            continue
+        share = result.accepted_share
+        accepted = f"{result.accepted} of {result.outside}"
+        if share is not None:
+            accepted += f" ({share:.0%})"
+        if result.imported:
+            accepted += f", {result.imported} imported by a bot"
+        table.add_row(
+            result.repo,
+            "archived" if result.archived else f"last push {result.last_push}",
+            accepted,
+            "yes" if result.contributing else "no",
+        )
     console.print(table)
-    console.print("[dim]If every repo looks good, set `verified: true` in the pack file.[/dim]")
+    console.print(
+        "[dim]Accepted means merged, or imported by a bot and closed (repo rules). "
+        "If every repo looks good, set `verified: true` in the pack file.[/dim]"
+    )
 
 
 @app.command()
