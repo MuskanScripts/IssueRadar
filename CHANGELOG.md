@@ -6,13 +6,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-03
+
+### Added
+
+- `firstpr pack verify --repo owner/name` checks any repo before it goes into a pack, and the table shows the share of outside PRs accepted.
+- A 40-second demo of the dashboard at the top of the README (`docs/media/`), and `web/scripts/record-demo.mjs` to record it again.
+
 ### Changed
 
-- `firstpr pack verify` counts PRs a repo accepted by importing them with a bot (per repo rules), as repo health already did, and takes `--repo owner/name` to check candidates.
-- Starter packs: all four verified with `pack verify`. java-spring drops spring-petclinic; web-react swaps TanStack/query and shadcn-ui for vitest, storybook, react-router, react-hook-form, material-ui and astro; ai-agents-and-mcp swaps google/adk-python for the MCP TypeScript SDK, the MCP inspector, pydantic-ai and openai-agents-python.
-- The first digest with pull requests lists only open ones, not everything merged or closed in the last day.
+- All four starter packs are verified with `pack verify` (numbers in RESULTS.md). java-spring drops spring-petclinic; web-react swaps TanStack/query and shadcn-ui for vitest, storybook, react-router, react-hook-form, material-ui and astro; ai-agents-and-mcp swaps google/adk-python for the MCP TypeScript SDK, the MCP inspector, pydantic-ai and openai-agents-python.
 - GitHub Actions moved to their Node 24 versions everywhere, including `action.yml` and the template workflow, so runs no longer show the Node 20 deprecation warning.
 - Dev tools: pytest up to 9, pytest-cov up to 7, mypy up to 2, rich up to 15; jsdom 30 and the newest `@types/node` 22 for the dashboard.
+
+### Fixed
+
+- The first digest with pull requests lists only open ones, not everything merged or closed in the last day.
+- `firstpr pack verify` counts PRs a repo accepted by importing them with a bot (per repo rules), the same way repo health does.
+- Re-running the release workflow for a tag that's already released no longer fails.
 
 ## [0.1.0] - 2026-10-03
 
@@ -100,5 +111,6 @@ First release: milestones M0 to M6 and M8.
 - CI (lint, type-check, tests, build, package build, secret scan) and Dependabot.
 - PLAN.md, ADRs 0001 to 0011, GitHub API notes, contributor and security docs.
 
-[Unreleased]: https://github.com/MuskanScripts/IssueRadar/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/MuskanScripts/IssueRadar/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/MuskanScripts/IssueRadar/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MuskanScripts/IssueRadar/releases/tag/v0.1.0
