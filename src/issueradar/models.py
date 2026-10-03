@@ -85,6 +85,17 @@ class PullRequestStatus(StrEnum):
             return "CI failing"
         return self.value.replace("_", " ").capitalize()
 
+    @property
+    def needs_you(self) -> bool:
+        """The author has something to do: fix, rebase, or send a nudge when it went quiet.
+        Same grouping as the dashboard's "Needs you" and "Gone quiet" columns."""
+        return self in {
+            PullRequestStatus.CHANGES_REQUESTED,
+            PullRequestStatus.CI_FAILING,
+            PullRequestStatus.MERGE_CONFLICT,
+            PullRequestStatus.STALE,
+        }
+
 
 def level_dots(tier: Tier) -> str:
     """Text form of the three-dot level marker, for terminals and plain text."""

@@ -38,6 +38,7 @@ from issueradar.storage.models import (
     Issue,
     Repo,
     SyncRun,
+    TrackedPullRequest,
     Watchlist,
     as_utc,
     utcnow,
@@ -202,6 +203,25 @@ def issue_out(report: IssueReport, settings: Settings) -> IssueOut:
         checklist=coach.checklist(
             report.repo, report.flags, discussion_first=report.difficulty.discussion_first
         ),
+    )
+
+
+def pull_out(row: TrackedPullRequest) -> PullOut:
+    return PullOut(
+        repo=row.repo_full_name,
+        number=row.number,
+        title=row.title,
+        url=row.url,
+        status=row.status,
+        status_label=PullRequestStatus(row.status).label,
+        needs_you=row.needs_you,
+        reasons=list(row.reasons),
+        nudge=row.nudge,
+        draft=row.draft,
+        days_quiet=row.days_quiet,
+        opened_at=row.opened_at,
+        closed_at=row.closed_at,
+        timeline=list(row.timeline),
     )
 
 
@@ -399,25 +419,7 @@ def create_app(
 
     @app.get("/api/prs", response_model=list[PullOut])
     def prs() -> list[PullOut]:
-        return [
-            PullOut(
-                repo=r.repo_full_name,
-                number=r.number,
-                title=r.title,
-                url=r.url,
-                status=r.status,
-                status_label=PullRequestStatus(r.status).label,
-                needs_you=r.needs_you,
-                reasons=list(r.reasons),
-                nudge=r.nudge,
-                draft=r.draft,
-                days_quiet=r.days_quiet,
-                opened_at=r.opened_at,
-                closed_at=r.closed_at,
-                timeline=list(r.timeline),
-            )
-            for r in tracked(db)
-        ]
+        return [pull_out(r) for r in tracked(db)]
 
     @app.get("/api/insights", response_model=InsightsOut)
     def get_insights() -> InsightsOut:
