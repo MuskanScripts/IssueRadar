@@ -15,6 +15,10 @@ GitHub**: it never comments, opens pull requests, assigns, stars or follows. Whe
 a pull request goes quiet it drafts a polite nudge for you to copy, and you
 decide whether to send it.
 
+![FirstPR dashboard on demo data: the radar, an issue's reasons, keyboard navigation, My PRs, the digest preview, Insights and dark mode](docs/media/demo.gif)
+
+*40 seconds of the dashboard on demo data ([MP4](docs/media/demo.mp4)). Try it yourself with `firstpr serve --demo`.*
+
 > **Status: v0.1.0.** Everything runs locally, in Docker, as a daily GitHub
 > Actions job, or from an AI assistant over MCP. See [ROADMAP.md](ROADMAP.md)
 > for what is next.
