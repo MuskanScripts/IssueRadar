@@ -40,7 +40,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# The MCP server (firstpr mcp). Kept optional: most users don't need its dependencies.
+mcp = ["mcp>=2.3,<3"]
 dev = [
+  "mcp>=2.3,<3",
   "pytest>=8.2,<9",
   "pytest-cov>=5,<7",
   "ruff>=0.6,<1",

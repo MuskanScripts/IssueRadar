@@ -38,10 +38,11 @@ All of these are thin shells over the same core package.
 
 | Interface | Exists today |
 | --- | --- |
-| CLI (`firstpr`) | `--version`, `doctor` (with `--measure-etag`), `demo`, `watch add/remove/list`, `sync`, `find`, `explain`, `eval sample/run`, `pack list/add/verify`, `digest`, `dismiss`, `snooze`, `init`, `export`, `prs` |
+| CLI (`firstpr`) | `--version`, `doctor` (with `--measure-etag`), `demo`, `watch add/remove/list`, `sync`, `find`, `explain`, `eval sample/run`, `pack list/add/verify`, `digest`, `dismiss`, `snooze`, `init`, `export`, `prs`, `daily`, `serve`, `mcp` |
 | FastAPI server (`firstpr serve`) | Local API, read-only toward GitHub, OpenAPI at /api/docs |
 | React dashboard (`web/`) | Radar, list, drawer, Repos, My PRs, Profile, Digest, Insights, Settings; demo mode in the browser |
-| Scheduled GitHub Action | M6 |
+| Scheduled GitHub Action | `action.yml` and `template/` |
+| MCP server (`firstpr mcp`) | stdio; read-only `find_issues`, `explain_issue`, `my_prs` |
 
 ## Boundaries that matter
 
@@ -80,6 +81,7 @@ src/issueradar/
   prs/tracker.py           finds your PRs and reads their details
   api/app.py               FastAPI app for the dashboard
   api/profile.py           skill profile and saved views in the database
+  mcp_server.py            MCP tools over stdio, same models as the API
 web/src/
   lib/source.ts            API data source; lib/demo-source.ts the demo one
   lib/data.tsx             TanStack Query hooks and the demo switch

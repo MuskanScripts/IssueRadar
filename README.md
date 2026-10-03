@@ -131,6 +131,17 @@ While working on the dashboard itself, run `firstpr serve` in one window and
 Keys: `j` and `k` move through the list, `o` opens an issue, `x` dismisses,
 `s` snoozes, `/` searches, `Ctrl+K` jumps anywhere.
 
+### From an AI assistant (MCP)
+
+```powershell
+python -m pip install -e ".[mcp]"
+firstpr mcp
+```
+
+`firstpr mcp` gives any MCP-capable assistant three read-only tools:
+`find_issues`, `explain_issue` and `my_prs`. Client setup is in
+[docs/mcp.md](docs/mcp.md).
+
 ## Run the checks
 
 Python, from the repository root with the virtual environment active:
@@ -169,6 +180,8 @@ src/issueradar/        Python core: CLI, config, models, demo data
   engine/              availability, difficulty, health, stack and ranking
   presets/             repo rules and starter packs
   radar.py             runs the engines on stored data
+  api/                 local API for the dashboard
+  mcp_server.py        MCP tools for AI assistants
 eval/                  labelling template for the evaluation harness
 tests/                 Python tests (never touch the network)
   fixtures/github/     recorded and documented GitHub responses
@@ -192,6 +205,7 @@ examples/              sample config and skills.yaml
 - [docs/digest.md](docs/digest.md): the daily digest and its channels
 - [docs/github-action.md](docs/github-action.md): run it on GitHub Actions
 - [docs/self-hosting.md](docs/self-hosting.md): pip, Docker Compose, scheduled tasks
+- [docs/mcp.md](docs/mcp.md): use it from an AI assistant over MCP
 - [ROADMAP.md](ROADMAP.md): what is done and what is next
 - [CHANGELOG.md](CHANGELOG.md): what changed in each release
 - [eval/README.md](eval/README.md): how to label issues and measure the engines

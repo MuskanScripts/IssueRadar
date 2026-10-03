@@ -183,6 +183,9 @@ policy and terms.
 Read-only tools (`find_issues`, `explain_issue`, `my_prs`) using the official
 MCP Python SDK.
 
+Status: built. `firstpr mcp` (stdio), in the optional `firstpr[mcp]` extra.
+Tested in-process and over a real stdio subprocess. See docs/mcp.md and ADR 0020.
+
 ### M9 (optional). Classifier experiment
 
 Only after the hand-labelled set exists. Ships only if it beats the rule-based

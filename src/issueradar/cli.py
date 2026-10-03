@@ -1168,5 +1168,40 @@ def serve(
     uvicorn.run(api, host=host, port=port, log_level="warning")
 
 
+@app.command("mcp")
+def mcp_server(
+    config: ConfigOption = None,
+    skills: SkillsOption = None,
+) -> None:
+    """Run the MCP server over stdio, for AI assistants. Read-only."""
+    # stdout carries the protocol, so every message for people goes to stderr,
+    # including the ones the shared helpers print.
+    global console
+    previous = console
+    console = Console(stderr=True)
+    try:
+        try:
+            from issueradar.mcp_server import create_server
+        except ImportError as exc:
+            console.print(
+                f'[red]The MCP server needs the mcp extra: pip install "{BRAND.distribution}[mcp]"'
+                "[/red]"
+            )
+            raise typer.Exit(code=2) from exc
+        settings = _settings(config)
+        db = _database(settings)
+        token, _ = token_from_env(os.environ)
+        server = create_server(
+            db,
+            settings,
+            _rules(),
+            file_profile=_profile(skills),
+            client_factory=(lambda: _client(settings, db)) if token else None,
+        )
+        server.run("stdio")
+    finally:
+        console = previous
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()
