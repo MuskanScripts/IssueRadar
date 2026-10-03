@@ -1,7 +1,11 @@
 name: Web and React
 description: Front-end tooling and React libraries.
-verified: false
+verified: true   # firstpr pack verify, 2026-10-03 (RESULTS.md)
 repos:
   - vitejs/vite
-  - TanStack/query
-  - shadcn-ui/ui
+  - vitest-dev/vitest
+  - storybookjs/storybook
+  - remix-run/react-router
+  - react-hook-form/react-hook-form
+  - mui/material-ui
+  - withastro/astro

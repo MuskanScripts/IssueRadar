@@ -9,7 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 
 - `firstpr pack verify` counts PRs a repo accepted by importing them with a bot (per repo rules), as repo health already did, and takes `--repo owner/name` to check candidates.
-- Starter packs: python-tooling and java-spring verified; spring-petclinic removed from java-spring.
+- Starter packs: all four verified with `pack verify`. java-spring drops spring-petclinic; web-react swaps TanStack/query and shadcn-ui for vitest, storybook, react-router, react-hook-form, material-ui and astro; ai-agents-and-mcp swaps google/adk-python for the MCP TypeScript SDK, the MCP inspector, pydantic-ai and openai-agents-python.
 - The first digest with pull requests lists only open ones, not everything merged or closed in the last day.
 - GitHub Actions moved to their Node 24 versions everywhere, including `action.yml` and the template workflow, so runs no longer show the Node 20 deprecation warning.
 - Dev tools: pytest up to 9, pytest-cov up to 7, mypy up to 2, rich up to 15; jsdom 30 and the newest `@types/node` 22 for the dashboard.
