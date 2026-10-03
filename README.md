@@ -19,7 +19,7 @@ decide whether to send it.
 
 *40 seconds of the dashboard on demo data ([MP4](docs/media/demo.mp4)). Try it yourself with `firstpr serve --demo`.*
 
-> **Status: v0.1.0.** Everything runs locally, in Docker, as a daily GitHub
+> **Status: v0.2.0.** Everything runs locally, in Docker, as a daily GitHub
 > Actions job, or from an AI assistant over MCP. See [ROADMAP.md](ROADMAP.md)
 > for what is next.
 >
