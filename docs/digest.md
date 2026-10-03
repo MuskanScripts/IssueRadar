@@ -9,7 +9,9 @@ firstpr digest --send              # deliver through every switched-on channel
 ## What's in it
 
 1. **Free for you**: the top 5 ranked free issues you haven't been sent yet.
-2. **Your pull requests**: what needs your attention (from the PR tracker).
+2. **Your pull requests**: your open PRs and what each needs (from the PR tracker),
+   plus any that were merged or closed in the last 24 hours. The very first digest
+   with PRs shows only the open ones, so it doesn't start with a backlog.
 3. **New since yesterday**: other free issues that first appeared in the last 24 hours.
 4. **Watchlist alerts**: a watched repo was archived, had no push for 60 days, or failed to sync.
 5. **Quiet day**: when there's nothing new and nothing was sent yet today, a short note instead.

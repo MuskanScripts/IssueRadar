@@ -870,6 +870,7 @@ def _pull_items(db: Database, settings: Settings) -> Callable[[], list[PullItem]
                     needs_you=row.needs_you,
                     state_hash=state_hash(row.status),
                     nudge=row.nudge,
+                    closed=row.state != "open",
                 )
             )
         return items
