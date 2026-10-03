@@ -15,9 +15,9 @@ GitHub**: it never comments, opens pull requests, assigns, stars or follows. Whe
 a pull request goes quiet it drafts a polite nudge for you to copy, and you
 decide whether to send it.
 
-> **Status: milestone M6 (distribution).** Everything runs locally, in Docker,
-> or as a daily GitHub Actions job. See [ROADMAP.md](ROADMAP.md) for what is
-> next.
+> **Status: v0.1.0.** Everything runs locally, in Docker, as a daily GitHub
+> Actions job, or from an AI assistant over MCP. See [ROADMAP.md](ROADMAP.md)
+> for what is next.
 >
 > "FirstPR" is a working name.
 
