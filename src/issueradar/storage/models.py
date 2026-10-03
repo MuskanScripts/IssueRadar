@@ -274,3 +274,31 @@ class ScoreSnapshot(Base):
     health_score: Mapped[int | None]
     rank_score: Mapped[float | None]
     reasons: Mapped[dict[str, Any]] = mapped_column(default=dict)
+
+
+class TrackedPullRequest(Base):
+    """A pull request the user opened, with its derived status (M4)."""
+
+    __tablename__ = "tracked_pull_requests"
+    __table_args__ = (UniqueConstraint("user_id", "repo_full_name", "number"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    repo_full_name: Mapped[str] = mapped_column(String(200))
+    number: Mapped[int]
+    title: Mapped[str] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(String(500))
+    state: Mapped[str] = mapped_column(String(20))  # open, closed
+    merged: Mapped[bool] = mapped_column(default=False)
+    draft: Mapped[bool] = mapped_column(default=False)
+    status: Mapped[str] = mapped_column(String(30))
+    needs_you: Mapped[str] = mapped_column(Text)
+    reasons: Mapped[list[Any]] = mapped_column(default=list)
+    nudge: Mapped[str | None] = mapped_column(Text)
+    days_quiet: Mapped[int] = mapped_column(default=0)
+    reviewed: Mapped[bool] = mapped_column(default=False)  # any review by someone else
+    opened_at: Mapped[datetime | None]
+    closed_at: Mapped[datetime | None]
+    first_review_at: Mapped[datetime | None]
+    timeline: Mapped[list[Any]] = mapped_column(default=list)
+    checked_at: Mapped[datetime] = mapped_column(default=utcnow)

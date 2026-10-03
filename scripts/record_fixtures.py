@@ -3,6 +3,7 @@
 Usage (PowerShell, from the repository root, virtual environment active):
 
     python scripts/record_fixtures.py MuskanScripts/IssueRadar
+    python scripts/record_fixtures.py --pr MuskanScripts/IssueRadar#15
 
 Writes one JSON file per request into tests/fixtures/github/recorded/. Only
 public data is requested, only GET is used (through the read-only client), and
@@ -37,7 +38,9 @@ KEEP_HEADERS = (
 )
 
 
-SCRUB_KEYS = frozenset({"temp_clone_token"})  # a real token for private repos
+# temp_clone_token is a real token for private repos; performed_via_github_app is app
+# metadata the tracker never reads.
+SCRUB_KEYS = frozenset({"temp_clone_token", "performed_via_github_app"})
 
 
 def scrub(value: Any) -> Any:
@@ -107,12 +110,55 @@ async def record(repo: str) -> list[Path]:
     return written
 
 
+async def record_pr(ref: str) -> Path:
+    """Everything the PR tracker reads for one PR, in one file."""
+    repo, number = ref.split("#")
+    settings = load_settings()
+    token, _ = token_from_env(os.environ)
+    async with GitHubClient(settings.github, token, cache=MemoryEtagCache()) as client:
+        pr = (await client.get(f"/repos/{repo}/pulls/{number}")).data
+        sha = pr["head"]["sha"]
+        bundle = {
+            "pull": pr,
+            "reviews": (
+                await client.get(f"/repos/{repo}/pulls/{number}/reviews", params={"per_page": 100})
+            ).data,
+            "check_runs": (
+                await client.get(
+                    f"/repos/{repo}/commits/{sha}/check-runs", params={"per_page": 100}
+                )
+            ).data,
+            "status": (await client.get(f"/repos/{repo}/commits/{sha}/status")).data,
+            "timeline": (
+                await client.get(
+                    f"/repos/{repo}/issues/{number}/timeline", params={"per_page": 100}
+                )
+            ).data,
+        }
+    fixture = {
+        "source": "recorded",
+        "recorded_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "pull_request": f"{repo}#{number}",
+        "body": scrub(bundle),
+    }
+    target = OUT / "prs" / f"{slug(repo, 'pr-' + number)}.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(fixture, indent=2) + "\n", encoding="utf-8")
+    return target
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print(__doc__)
         raise SystemExit(2)
     OUT.mkdir(parents=True, exist_ok=True)
-    for repo in sys.argv[1:]:
+    args = sys.argv[1:]
+    if args[0] == "--pr":
+        for ref in args[1:]:
+            path = asyncio.run(record_pr(ref))
+            print(f"wrote {path.relative_to(OUT.parents[3])}")
+        return
+    for repo in args:
         for path in asyncio.run(record(repo)):
             print(f"wrote {path.relative_to(OUT.parents[3])}")
 

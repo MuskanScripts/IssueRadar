@@ -60,10 +60,11 @@ watchlist ──► discover ──► fetch ──► normalise ──► enric
 | 14 | Enrich finalists only, over REST (GraphQL batching later) | [0014](docs/adr/0014-finalist-enrichment-over-rest.md) |
 | 15 | Score at query time; keep snapshots for history | [0015](docs/adr/0015-score-at-query-time.md) |
 | 16 | A digest item is sent once, until what the reader sees changes | [0016](docs/adr/0016-digest-idempotency.md) |
+| 17 | PR status from REST, in a fixed order | [0017](docs/adr/0017-pr-status-over-rest.md) |
 
 ## Milestones
 
-Status: **M0, M1 and M2 done (merged). M3 in review.** Everything after M3 is planned, not built.
+Status: **M0, M1 and M2 done (merged). M3 and M4 in review.** Everything after M4 is planned, not built.
 
 ### M0. Scaffold
 
@@ -132,8 +133,11 @@ Scope: `author:@me is:pr` discovery, GraphQL details, status derivation, stale
 logic, "needs you" ordering, nudge drafts (never posted), per-PR timeline,
 bot-import acceptance rule.
 
-Done when: statuses match github.com for at least 5 real PRs; stale-day logic is
-tested with frozen time.
+Done when:
+
+- [x] Statuses match github.com for at least 5 real PRs (5 recorded in tests, 6 live; RESULTS.md).
+- [x] Stale-day logic is tested with frozen time.
+- [x] Nudge drafts are shown, never posted. The digest and the coach use tracked PRs.
 
 ### M5. API and dashboard
 

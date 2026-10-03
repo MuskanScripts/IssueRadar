@@ -245,7 +245,9 @@ ranking:
   competition_comments: 10   # this many comments or more: no low-competition points
 
 pull_requests:
-  stale_days: 7
+  stale_days: 7             # no activity from anyone else for this long: stale, nudge drafted
+  track_days: 90            # track your PRs updated within this many days
+  unreviewed_warning_at: 3  # coach warns when this many of your open PRs await a first review
 
 digest:
   top_n: 5
