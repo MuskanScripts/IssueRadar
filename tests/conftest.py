@@ -12,6 +12,8 @@ from issueradar.storage import Database, open_database
 
 sys.path.insert(0, str(Path(__file__).parent))  # lets tests import fake_github
 
+pytest_plugins = ["scenario"]  # the `synced` fixture
+
 
 @pytest.fixture(autouse=True)
 def isolated_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

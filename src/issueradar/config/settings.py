@@ -252,8 +252,53 @@ class PullRequestSettings(_Strict):
     stale_days: int = Field(ge=1)
 
 
+class MarkdownChannel(_Strict):
+    enabled: bool
+
+
+class RssChannel(_Strict):
+    enabled: bool
+    max_items: int = Field(ge=1, le=500)
+    link: str
+
+
+class EmailChannel(_Strict):
+    enabled: bool
+    smtp_host: str
+    smtp_port: int = Field(ge=1, le=65535)
+    starttls: bool
+    username: str
+    sender: str
+    recipient: str
+    password_env: str
+
+
+class TelegramChannel(_Strict):
+    enabled: bool
+    chat_id: str
+    token_env: str
+
+
+class WebhookChannel(_Strict):
+    enabled: bool
+    webhook_env: str
+
+
+class Channels(_Strict):
+    markdown: MarkdownChannel
+    rss: RssChannel
+    email: EmailChannel
+    telegram: TelegramChannel
+    discord: WebhookChannel
+    slack: WebhookChannel
+
+
 class DigestSettings(_Strict):
     top_n: int = Field(ge=1, le=50)
+    new_since_hours: int = Field(ge=1)
+    quiet_repo_days: int = Field(ge=1)
+    output_folder: str
+    channels: Channels
 
 
 class Settings(_Strict):

@@ -104,6 +104,32 @@ firstpr eval run eval/labels.csv --json eval/results.json
 
 Paste the output here with the date and the commit it ran on.
 
+## M3: digest generation time
+
+**Target:** under 5 seconds from cache.
+
+**Command:** `python scripts/bench_digest.py 25 200`
+
+**Data:** a generated database of 25 repos with 200 open issues each (5,000
+issues), built from GitHub's documented issue shape. It measures speed only and
+says nothing about real repositories. Linux build container, Python 3.13,
+2026-10-02.
+
+| Version | Time |
+| --- | --- |
+| First version (each issue queried its repo's PRs and its own signals) | 9.59 s, 9.49 s |
+| PRs and signals loaded once per run | 4.98 s |
+| Plus one compiled pattern per phrase list, language check on the first 2,000 characters | 1.80 s, 2.20 s, 2.44 s |
+
+**Result:** about 2 seconds for 5,000 issues, under the target.
+
+## M3: running the digest twice
+
+`tests/test_digest.py::test_digest_send_twice_sends_nothing_new` runs
+`firstpr digest --send` twice on the test repo. The first run writes the
+Markdown file and the RSS feed; the second prints "Nothing new since the last
+digest, so nothing was sent." and the feed file is byte-for-byte unchanged.
+
 ## M2: things noticed on real data
 
 Measured on MuskanScripts/IssueRadar on 2026-10-02 (`firstpr watch add

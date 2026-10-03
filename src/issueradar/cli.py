@@ -23,7 +23,13 @@ from rich.table import Table
 from issueradar import __version__, evaluation
 from issueradar.brand import BRAND
 from issueradar.config import ConfigError, Settings, load_settings
+from issueradar.delivery.http import DeliveryError
 from issueradar.demo import load_demo
+from issueradar.digest import DigestBuilder, mark, record_sent
+from issueradar.digest import render as digest_render
+from issueradar.digest.builder import issue_key
+from issueradar.digest.channels import enabled_channels
+from issueradar.engine import coach
 from issueradar.engine.rules import RepoRules, load_packs, load_rules
 from issueradar.engine.stack import SkillProfile, load_profile
 from issueradar.github import GitHubClient, GitHubError, token_from_env
@@ -483,12 +489,19 @@ def _print_report(report: IssueReport) -> None:
     for line in report.health_reasons:
         console.print(f"  - {line}")
     flag_reasons = report.flags.get("reasons") or []
-    if isinstance(flag_reasons, list) and flag_reasons:
-        console.print("\n[bold]Before you start[/bold]")
+    if isinstance(flag_reasons, list):
         for reason in flag_reasons:
             console.print(f"  - {reason}")
     if report.repo_notes:
         console.print(f"  - Repo notes: {report.repo_notes}")
+    console.print("\n[bold]Before you start[/bold]")
+    for line in coach.checklist(
+        report.repo,
+        report.flags,
+        discussion_first=report.difficulty.discussion_first,
+        open_unreviewed_prs=_open_unreviewed(),
+    ):
+        console.print(f"  [ ] {line}", markup=False)
 
     console.print("\n[bold]Your stack[/bold]")
     for reason in report.stack.reasons:
@@ -734,6 +747,204 @@ def pack_verify(name: str, config: ConfigOption = None) -> None:
         table.add_row(*row)
     console.print(table)
     console.print("[dim]If every repo looks good, set `verified: true` in the pack file.[/dim]")
+
+
+@app.command()
+def digest(
+    send: Annotated[
+        bool, typer.Option("--send", help="Deliver it and remember what was sent.")
+    ] = False,
+    fmt: Annotated[
+        str, typer.Option("--format", help="Preview format: text, markdown or html")
+    ] = "text",
+    config: ConfigOption = None,
+    skills: SkillsOption = None,
+) -> None:
+    """Build today's digest. Without --send it is only a preview and nothing is remembered."""
+    settings = _settings(config)
+    db = _database(settings)
+    radar = Radar(db, settings, _rules(), _profile(skills))
+    built = DigestBuilder(db, settings, radar, pulls=_pull_items(db, settings)).build()
+    if not send:
+        renderers = {
+            "text": digest_render.text,
+            "markdown": digest_render.markdown,
+            "html": digest_render.html,
+        }
+        if fmt not in renderers:
+            console.print("[red]--format must be text, markdown or html.[/red]")
+            raise typer.Exit(code=2)
+        console.print(renderers[fmt](built), markup=False, highlight=False)
+        return
+    if built.is_empty and not built.quiet_message:
+        console.print("Nothing new since the last digest, so nothing was sent.")
+        return
+    try:
+        channels = enabled_channels(settings.digest)
+    except DeliveryError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+    if not channels:
+        console.print("[yellow]No channels are switched on in your config.[/yellow]")
+        raise typer.Exit(code=2)
+    delivered = []
+    for channel in channels:
+        try:
+            console.print(f"{channel.name}: {channel.send(built)}")
+            delivered.append(channel.name)
+        except Exception as exc:  # one broken channel must not stop the others
+            console.print(f"[red]{channel.name}: {exc}[/red]")
+    if delivered:
+        record_sent(db, built, delivered)
+    if len(delivered) < len(channels):
+        raise typer.Exit(code=1)
+
+
+def _open_unreviewed() -> int:
+    """Your open PRs still waiting for a first review. Filled in by the PR tracker (M4)."""
+    return 0
+
+
+def _pull_items(db: Database, settings: Settings):  # type: ignore[no-untyped-def]
+    """PR items for the digest. Filled in by the PR tracker (M4)."""
+    return None
+
+
+def _item_key(value: str) -> str:
+    try:
+        repo, number = parse_issue_ref(value)
+    except IssueUrlError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+    return issue_key(repo, number)
+
+
+@app.command()
+def dismiss(
+    issue: Annotated[str, typer.Argument(help="Issue link")], config: ConfigOption = None
+) -> None:
+    """Never show this issue in a digest again."""
+    key = _item_key(issue)
+    mark(_database(_settings(config)), key, "dismissed")
+    console.print(f"Dismissed {key.removeprefix('issue:')}.")
+
+
+@app.command()
+def snooze(
+    issue: Annotated[str, typer.Argument(help="Issue link")],
+    days: Annotated[int, typer.Option("--days", min=1)] = 7,
+    config: ConfigOption = None,
+) -> None:
+    """Hide this issue from digests for a while."""
+    from datetime import timedelta
+
+    from issueradar.storage.models import utcnow
+
+    key = _item_key(issue)
+    until = utcnow() + timedelta(days=days)
+    mark(_database(_settings(config)), key, "snoozed", until=until)
+    console.print(f"Snoozed {key.removeprefix('issue:')} until {until:%Y-%m-%d}.")
+
+
+@app.command()
+def init(
+    folder: Annotated[Path, typer.Option("--folder", help="Where to create the files")] = Path(),
+) -> None:
+    """Create firstpr.yaml and skills.yaml to edit, and say what to do next."""
+    from importlib.resources import files as package_files
+
+    created = []
+    targets = {
+        f"{BRAND.cli}.yaml": _EXAMPLE_CONFIG,
+        "skills.yaml": package_files("issueradar.presets")
+        .joinpath("skills.example.yaml")
+        .read_text(encoding="utf-8"),
+    }
+    folder.mkdir(parents=True, exist_ok=True)
+    for name, text in targets.items():
+        path = folder / name
+        if path.exists():
+            console.print(f"{path} already exists; left it as it is.")
+            continue
+        path.write_text(text, encoding="utf-8")
+        created.append(path)
+        console.print(f"Created {path}.")
+    console.print(
+        "\nNext steps:\n"
+        "  1. Edit skills.yaml so it matches you.\n"
+        f"  2. Set {TOKEN_ENV} to a read-only token (see docs/human-tasks.md).\n"
+        f"  3. {BRAND.cli} pack list, then {BRAND.cli} pack add <name> or "
+        f"{BRAND.cli} watch add owner/repo\n"
+        f"  4. {BRAND.cli} sync, then {BRAND.cli} find or {BRAND.cli} digest"
+    )
+
+
+_EXAMPLE_CONFIG = """# Your settings. Anything left out uses the defaults
+# (src/issueradar/config/defaults.yaml).
+
+digest:
+  top_n: 5
+  channels:
+    markdown:
+      enabled: true
+    rss:
+      enabled: true
+    # email:
+    #   enabled: true
+    #   smtp_host: smtp.example.com
+    #   username: you@example.com
+    #   sender: you@example.com
+    #   recipient: you@example.com
+    #   (password goes in the FIRSTPR_SMTP_PASSWORD environment variable)
+
+availability:
+  stale_claim_days: 14
+
+pull_requests:
+  stale_days: 7
+"""
+
+
+@app.command()
+def export(
+    out: Annotated[
+        Path | None, typer.Option("--out", help="File to write (default: print)")
+    ] = None,
+    config: ConfigOption = None,
+    skills: SkillsOption = None,
+) -> None:
+    """Export your watchlist and the scored open issues as JSON."""
+    import json
+
+    settings = _settings(config)
+    db = _database(settings)
+    radar = Radar(db, settings, _rules(), _profile(skills))
+    filters = Filters(include_unavailable=True)
+    data = {
+        "watchlist": watchlist.list_watched(db),
+        "issues": [
+            {
+                "repo": r.repo,
+                "number": r.number,
+                "title": r.title,
+                "url": r.url,
+                "availability": r.availability.state.value,
+                "availability_reasons": [str(x) for x in r.availability.reasons],
+                "tier": r.difficulty.tier.value,
+                "difficulty_score": r.difficulty.score,
+                "time": r.difficulty.time_bucket.value,
+                "health": r.health_score,
+                "rank": r.rank.score if r.rank else None,
+            }
+            for r in radar.find(filters)
+        ],
+    }
+    text = json.dumps(data, indent=2)
+    if out:
+        out.write_text(text + "\n", encoding="utf-8")
+        console.print(f"Wrote {len(data['issues'])} issues to {out}.")  # type: ignore[arg-type]
+    else:
+        console.print(text, markup=False, highlight=False)
 
 
 if __name__ == "__main__":  # pragma: no cover

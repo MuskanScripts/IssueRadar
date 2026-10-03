@@ -249,3 +249,32 @@ pull_requests:
 
 digest:
   top_n: 5
+  new_since_hours: 24       # "New since yesterday" looks back this far
+  quiet_repo_days: 60       # watchlist alert when a repo has no push for this long
+  output_folder: digests    # where the Markdown and RSS files go (relative to where you run it)
+  channels:
+    markdown:
+      enabled: true
+    rss:
+      enabled: true
+      max_items: 30
+      link: ""              # optional: where the feed's items should link to
+    email:
+      enabled: false
+      smtp_host: ""
+      smtp_port: 587
+      starttls: true
+      username: ""
+      sender: ""
+      recipient: ""
+      password_env: FIRSTPR_SMTP_PASSWORD
+    telegram:
+      enabled: false
+      chat_id: ""
+      token_env: FIRSTPR_TELEGRAM_TOKEN
+    discord:
+      enabled: false
+      webhook_env: FIRSTPR_DISCORD_WEBHOOK
+    slack:
+      enabled: false
+      webhook_env: FIRSTPR_SLACK_WEBHOOK
