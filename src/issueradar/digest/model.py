@@ -31,6 +31,7 @@ class PullItem:
     needs_you: str
     state_hash: str
     nudge: str | None = None
+    closed: bool = False  # merged or closed: news once, never a first-day backlog
 
 
 @dataclass(frozen=True)

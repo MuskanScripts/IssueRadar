@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The first digest with pull requests lists only open ones, not everything merged or closed in the last day.
+
 ## [0.1.0] - 2026-10-03
 
 First release: milestones M0 to M6 and M8.
