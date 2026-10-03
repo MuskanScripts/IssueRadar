@@ -62,8 +62,8 @@ your own pull requests; if it cannot, the notes will say what to change.)
   issueradar > Package settings > Change visibility**).
 - [ ] **Upload the social preview**: `site/social-preview.png` in **Settings > General >
   Social preview**.
-- [ ] **Record the screen recording**: `firstpr serve --demo`, then the radar, an issue's
-  reasons, My PRs and the digest preview, about 60 seconds. Put it in the README.
+- [x] **Record the screen recording.** `docs/media/demo.gif` and `demo.mp4`, in the README. Re-record
+  after dashboard changes with `web/scripts/record-demo.mjs` (steps at the top of the file).
 - [ ] **Clean-machine test.** On a Windows machine (or a fresh Windows Sandbox) with only
   Python installed, follow the README from the top and time it. Done when it takes under
   10 minutes. Note what was confusing.
