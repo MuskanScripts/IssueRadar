@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 # The distribution name and the CLI command below must match
 # src/issueradar/brand.json (see docs/adr/0002-brand-in-one-place.md).
 name = "firstpr"
-version = "0.0.1"
+version = "0.1.0"
 description = "Find open-source issues you can actually work on, then track the pull requests you open."
 readme = "README.md"
 license = "MIT"

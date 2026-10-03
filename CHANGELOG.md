@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-03
+
+First release: milestones M0 to M6 and M8.
+
 ### Added (M8)
 
 - MCP server, `firstpr mcp` over stdio, with read-only `find_issues`, `explain_issue` and `my_prs` tools that return structured results. Optional extra: `firstpr[mcp]`.
@@ -87,3 +91,6 @@ All notable changes to this project are documented here. The format follows
 - Web shell (React, Vite, Tailwind CSS v4) with light and dark design tokens and contrast tests.
 - CI (lint, type-check, tests, build, package build, secret scan) and Dependabot.
 - PLAN.md, ADRs 0001 to 0011, GitHub API notes, contributor and security docs.
+
+[Unreleased]: https://github.com/MuskanScripts/IssueRadar/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/MuskanScripts/IssueRadar/releases/tag/v0.1.0
