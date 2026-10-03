@@ -228,13 +228,36 @@ What changed because of it:
   well-documented projects and the count includes rejected drive-by PRs.
 - **spring-petclinic** is out of java-spring: it's a sample app, 9 of 100
   outside PRs were merged and it has no CONTRIBUTING file.
-- **web-react** stays unverified: vite is fine, but TanStack/query and
-  shadcn-ui merged few outside PRs. Candidates can be checked with
-  `firstpr pack verify --repo owner/name` before they go in.
-- **google/adk-python** showed 0 accepted because `pack verify` only counted
-  merges, while that repo accepts changes by importing them and closing the
-  PR. Repo health already counted those through the repo rules; `pack verify`
-  now uses the same rule, so this pack waits for a re-run.
+- **google/adk-python** first showed 0 accepted because `pack verify` only
+  counted merges. Once it also counted the repo rule's bot imports (the "ready
+  to pull" label), it still showed 0 of 89: none of its recently closed outside
+  PRs carry that label. So the rule doesn't match what the repo does today, or
+  it isn't taking outside PRs now. Either way it's out of the pack.
+
+Second round, after that fix, checking candidates with
+`firstpr pack verify --repo owner/name` (same day, same token):
+
+| Repo | Last push | Outside PRs accepted | CONTRIBUTING | Decision |
+| --- | --- | --- | --- | --- |
+| vitest-dev/vitest | 2026-10-02 | 23 of 45 (51%) | yes | added to web-react |
+| storybookjs/storybook | 2026-10-02 | 47 of 62 (76%) | yes | added to web-react |
+| mui/material-ui | 2026-10-03 | 12 of 22 (55%) | yes | added to web-react |
+| react-hook-form/react-hook-form | 2026-10-03 | 60 of 74 (81%) | yes | added to web-react |
+| remix-run/react-router | 2026-10-01 | 62 of 81 (77%) | yes | added to web-react |
+| withastro/astro | 2026-10-02 | 23 of 33 (70%) | yes | added to web-react |
+| modelcontextprotocol/typescript-sdk | 2026-10-02 | 19 of 59 (32%) | yes | added to ai-agents-and-mcp |
+| modelcontextprotocol/inspector | 2026-10-02 | 4 of 12 (33%) | yes | added to ai-agents-and-mcp |
+| pydantic/pydantic-ai | 2026-10-03 | 78 of 92 (85%) | yes | added to ai-agents-and-mcp |
+| openai/openai-agents-python | 2026-10-02 | 7 of 10 (70%) | yes | added to ai-agents-and-mcp |
+| langchain-ai/langgraph | 2026-10-03 | 13 of 71 (18%) | yes | left out, just under 1 in 5 |
+| crewAIInc/crewAI | 2026-10-03 | 6 of 62 (10%) | yes | left out |
+| huggingface/smolagents | 2026-09-30 | 0 of 95 (0%) | yes | left out |
+| microsoft/autogen | 2026-04-15 | 0 of 100 (0%) | yes | left out, no push in six months |
+
+All four packs are now verified. TanStack/query (1 of 16) and shadcn-ui (5 of
+72) are out of web-react, and google/adk-python is out of ai-agents-and-mcp.
+inspector and openai-agents-python had few closed outside PRs (12 and 10), so
+their share is less certain than the rest.
 
 ## M4: PR statuses compared with github.com
 
