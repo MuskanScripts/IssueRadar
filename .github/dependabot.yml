@@ -23,7 +23,14 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/react-dom"
         update-types: ["version-update:semver-major"]
+      # Types for Node follow the Node version in .nvmrc (22), not the newest Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # typescript-eslint supports TypeScript up to 6.0 so far; move to 7 when it does.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
-    directory: /
+    # The root covers the workflows and action.yml; template/ is what users copy.
+    directories: ["/", "/template"]
     schedule:
       interval: weekly

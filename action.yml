@@ -53,7 +53,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v7
       with:
         python-version: ${{ inputs.python-version }}
 
@@ -73,7 +73,7 @@ runs:
     # The database keeps ETags, what was already sent and your PR history between runs.
     - name: Restore the database
       if: inputs.cache == 'true'
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: .firstpr
         key: firstpr-db-${{ github.run_id }}-${{ github.run_attempt }}
@@ -113,14 +113,14 @@ runs:
 
     - name: Save the database
       if: always() && inputs.cache == 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: .firstpr
         key: firstpr-db-${{ github.run_id }}-${{ github.run_attempt }}
 
     - name: Upload the digest
       if: always() && inputs.upload-artifact == 'true'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: firstpr-digest
         path: digests/

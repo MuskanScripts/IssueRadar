@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- GitHub Actions moved to their Node 24 versions everywhere, including `action.yml` and the template workflow, so runs no longer show the Node 20 deprecation warning.
+- Dev tools: pytest up to 9, pytest-cov up to 7, mypy up to 2, rich up to 15; jsdom 30 and the newest `@types/node` 22 for the dashboard.
+
 ## [0.1.0] - 2026-10-03
 
 First release: milestones M0 to M6 and M8.
