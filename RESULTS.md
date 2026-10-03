@@ -201,6 +201,41 @@ Nothing to do."); fixed in the next commit with a test.
 Not measured yet. Target: under 10 minutes from the README alone on a Windows
 machine with only Python installed (docs/human-tasks.md).
 
+## Starter packs
+
+`firstpr pack verify <name>`, run with my own token on 2026-10-03. "Accepted"
+is outside pull requests (not maintainers, not bots) among the last 100 closed.
+
+| Pack | Repo | Last push | Outside PRs accepted | CONTRIBUTING |
+| --- | --- | --- | --- | --- |
+| python-tooling | pytest-dev/pytest | 2026-09-29 | 10 of 61 | yes |
+| | pypa/pip | 2026-09-23 | 8 of 55 | yes |
+| | python-poetry/poetry | 2026-09-28 | 28 of 50 | yes |
+| | astral-sh/ruff | 2026-10-03 | 24 of 37 | yes |
+| java-spring | spring-projects/spring-boot | 2026-10-02 | 54 of 90 | yes |
+| | spring-projects/spring-framework | 2026-10-02 | 49 of 99 | yes |
+| | spring-projects/spring-petclinic | 2026-09-29 | 9 of 100 | no |
+| web-react | vitejs/vite | 2026-10-02 | 30 of 77 | yes |
+| | TanStack/query | 2026-10-03 | 1 of 16 | yes |
+| | shadcn-ui/ui | 2026-10-02 | 5 of 72 | yes |
+| ai-agents-and-mcp | modelcontextprotocol/python-sdk | 2026-10-02 | 23 of 89 | yes |
+| | google/adk-python | 2026-10-03 | 0 of 89, see below | yes |
+
+What changed because of it:
+
+- **python-tooling** and **java-spring** are marked verified. pytest and pip
+  accept a lower share than the others (about 15%), but both are long-running,
+  well-documented projects and the count includes rejected drive-by PRs.
+- **spring-petclinic** is out of java-spring: it's a sample app, 9 of 100
+  outside PRs were merged and it has no CONTRIBUTING file.
+- **web-react** stays unverified: vite is fine, but TanStack/query and
+  shadcn-ui merged few outside PRs. Candidates can be checked with
+  `firstpr pack verify --repo owner/name` before they go in.
+- **google/adk-python** showed 0 accepted because `pack verify` only counted
+  merges, while that repo accepts changes by importing them and closing the
+  PR. Repo health already counted those through the repo rules; `pack verify`
+  now uses the same rule, so this pack waits for a re-run.
+
 ## M4: PR statuses compared with github.com
 
 **Done when:** statuses match what github.com shows for at least 5 real PRs.

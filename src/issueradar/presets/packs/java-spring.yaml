@@ -1,7 +1,6 @@
 name: Java and Spring
 description: The Spring ecosystem and popular Java libraries.
-verified: false
+verified: true
 repos:
   - spring-projects/spring-boot
   - spring-projects/spring-framework
-  - spring-projects/spring-petclinic

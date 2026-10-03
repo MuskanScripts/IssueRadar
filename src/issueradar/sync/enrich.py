@@ -359,16 +359,11 @@ class Enricher:
         ):
             if pr.author_is_bot or (pr.author_association or "").upper() in maintainers:
                 continue
-            if pr.merged_at is not None:
-                outcomes.append("merged")
-            elif (
-                rules.accepted_by_bot
-                and rules.accepted_by_bot.label
-                and (rules.accepted_by_bot.label.lower() in {lbl.lower() for lbl in pr.labels})
-            ):
-                outcomes.append("accepted_by_bot")
-            else:
-                outcomes.append("closed")
+            outcomes.append(
+                health_engine.outside_pr_outcome(
+                    merged=pr.merged_at is not None, labels=pr.labels, rules=rules
+                )
+            )
 
         response_days: list[float] = []
         issues = session.scalars(

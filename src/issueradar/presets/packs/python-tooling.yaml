@@ -1,6 +1,6 @@
 name: Python tooling
 description: Tools Python developers use every day.
-verified: false
+verified: true
 repos:
   - pytest-dev/pytest
   - pypa/pip
