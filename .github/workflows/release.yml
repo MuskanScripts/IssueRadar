@@ -64,6 +64,8 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true   # a re-run of the same tag must not fail on files PyPI already has
 
   image:
     name: Container image
@@ -116,7 +118,17 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           python scripts/release_notes.py $env:TAG > notes.md
-          gh release create $env:TAG (Get-ChildItem dist/*).FullName --title $env:TAG --notes-file notes.md --verify-tag
+          $files = (Get-ChildItem dist/*).FullName
+          # On a re-run the release already exists: refresh its files and notes instead of failing.
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG $files --clobber
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            gh release edit $env:TAG --notes-file notes.md
+          } else {
+            gh release create $env:TAG $files --title $env:TAG --notes-file notes.md --verify-tag
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Move the major tag the template uses
         shell: pwsh
         env:
