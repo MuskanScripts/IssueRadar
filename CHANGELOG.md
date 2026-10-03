@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (M8)
+
+- MCP server, `firstpr mcp` over stdio, with read-only `find_issues`, `explain_issue` and `my_prs` tools that return structured results. Optional extra: `firstpr[mcp]`.
+- docs/mcp.md and ADR 0020.
+
 ### Added (M6)
 
 - GitHub Action (`action.yml`) and the template repo files in `template/`: a daily scheduled digest with the database kept in the Actions cache.

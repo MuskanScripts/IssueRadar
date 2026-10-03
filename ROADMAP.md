@@ -14,6 +14,8 @@ plan with "done when" checks is in [PLAN.md](PLAN.md).
 - **M5.** Local dashboard and API, demo mode.
 - **M6.** GitHub Action and template repo, Docker image and Compose, PyPI
   packaging, release automation, landing page, docs.
+- **M8.** MCP server: `find_issues`, `explain_issue` and `my_prs` for AI
+  assistants, read-only (`firstpr mcp`).
 
 ## Next
 
@@ -27,8 +29,6 @@ plan with "done when" checks is in [PLAN.md](PLAN.md).
 - **M7. Hosted mode** behind a feature flag: sign in with GitHub (no write
   scopes), encrypted tokens, Postgres, shared crawler, delete-my-data, privacy
   policy and terms. Starts only after M0 to M6 ship and others use them.
-- **M8 (optional). MCP server** with read-only tools (`find_issues`,
-  `explain_issue`, `my_prs`).
 - **M9 (optional). Classifier experiment**, shipped only if it beats the rules
   on the hand-labelled set.
 
