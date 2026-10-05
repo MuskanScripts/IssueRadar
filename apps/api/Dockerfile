@@ -11,4 +11,5 @@ RUN pip install /app/apps/api \
 
 USER firstpr
 EXPOSE 8000
-CMD ["uvicorn", "--factory", "firstpr_api.main:create_app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+# Apply database migrations, then start the API.
+CMD ["sh", "-c", "alembic -c /app/apps/api/alembic.ini upgrade head && exec uvicorn --factory firstpr_api.main:create_app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]
