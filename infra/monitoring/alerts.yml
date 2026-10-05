@@ -1,0 +1,48 @@
+# Alert rules for FirstPR, read by Prometheus (see prometheus.yml next to this file).
+# Every number here is from /api/v1/metrics. Thresholds are a starting point;
+# loosen one if it pages for nothing twice.
+groups:
+  - name: firstpr
+    rules:
+      - alert: FirstPRDown
+        expr: up{job="firstpr"} == 0
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: The API has not answered /metrics for 5 minutes.
+
+      - alert: FirstPRErrorRate
+        # More than 2% of requests failed with a 5xx over the last 5 minutes,
+        # once there is enough traffic for the ratio to mean something.
+        expr: firstpr_error_ratio_5m > 0.02 and firstpr_requests_5m > 50
+        for: 10m
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of API requests are failing."
+
+      - alert: FirstPRWorkerStopped
+        expr: firstpr_worker_heartbeat_age_seconds > 300
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: The worker has not written its heartbeat for over 5 minutes.
+
+      - alert: FirstPRQueueBackedUp
+        expr: firstpr_queue_oldest_job_seconds > 900
+        for: 10m
+        labels: {severity: warn}
+        annotations:
+          summary: A job has waited over 15 minutes in the queue.
+
+      - alert: FirstPRGitHubBudgetLow
+        expr: firstpr_github_budget_left_ratio < 0.1
+        for: 15m
+        labels: {severity: warn}
+        annotations:
+          summary: "GitHub token {{ $labels.token }} has under 10% of its hourly limit left."
+
+      - alert: FirstPRWorkspaceFailures
+        expr: firstpr_workspace_failures_24h > 10
+        labels: {severity: warn}
+        annotations:
+          summary: Over 10 workspaces failed to start in the last 24 hours.

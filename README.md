@@ -214,6 +214,7 @@ examples/              sample config and skills.yaml
 - [docs/digest.md](docs/digest.md): the daily digest and its channels
 - [docs/github-action.md](docs/github-action.md): run it on GitHub Actions
 - [docs/self-hosting.md](docs/self-hosting.md): pip, Docker Compose, scheduled tasks
+- [docs/deploy.md](docs/deploy.md): deploy the hosted platform (Render or one server), backups, alerts
 - [docs/mcp.md](docs/mcp.md): use it from an AI assistant over MCP
 - [ROADMAP.md](ROADMAP.md): what is done and what is next
 - [CHANGELOG.md](CHANGELOG.md): what changed in each release

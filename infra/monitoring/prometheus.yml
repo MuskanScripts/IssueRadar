@@ -1,0 +1,18 @@
+# Example Prometheus config for FirstPR. Put the API's METRICS_TOKEN in
+# /etc/prometheus/firstpr-token (one line, no newline needed).
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  - job_name: firstpr
+    scheme: https
+    metrics_path: /api/v1/metrics
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/firstpr-token
+    static_configs:
+      - targets: ["firstpr.example.dev"]

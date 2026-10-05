@@ -20,6 +20,7 @@ import os
 import time
 from typing import Any, ClassVar
 
+import sentry_sdk
 from arq import cron, func
 from arq.connections import RedisSettings
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -30,11 +31,13 @@ from firstpr_platform.db import session_factory
 from firstpr_platform.github_app import AppTokenSource
 from firstpr_platform.github_oauth import GitHubOAuth
 from firstpr_platform.notify import Mailer, signing_key
-from firstpr_worker.catalogue import Catalogue
+from firstpr_worker.catalogue import Catalogue, ensure_database
 from firstpr_worker.jobs import (
     cards_if_empty,
+    check_opt_outs,
     check_workspaces,
     flush_activity,
+    forget_user,
     handle_webhook,
     make_daily_picks,
     poll_workspace,
@@ -64,10 +67,19 @@ async def heartbeat(ctx: dict[str, Any]) -> float:
 
 async def startup(ctx: dict[str, Any]) -> None:
     settings = Settings()
+    if settings.sentry_dsn:
+        # Errors in jobs go to Sentry. No personal data: ids only, never tokens.
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.environment,
+            send_default_pii=False,
+            traces_sample_rate=0.0,
+        )
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
     ctx["settings"] = settings
     ctx["engine"] = engine
     ctx["db"] = session_factory(engine)
+    ensure_database(settings.catalogue_database_url)
     ctx["catalogue"] = Catalogue(
         settings.catalogue_database_url,
         settings.budget_pause_share,
@@ -130,6 +142,8 @@ class WorkerSettings:
         func(track_active_users, keep_result=0),
         func(send_digests, keep_result=0, timeout=10 * 60),
         func(flush_activity, keep_result=0),
+        func(check_opt_outs, keep_result=0, timeout=30 * 60),
+        func(forget_user, keep_result=0),
     ]
     cron_jobs: ClassVar = [
         cron(heartbeat, second=0, run_at_startup=False),
@@ -147,6 +161,8 @@ class WorkerSettings:
         ),
         cron(send_digests, minute=25, second=0, unique=True, keep_result=0),
         cron(flush_activity, minute=set(range(1, 60, 10)), second=30, unique=True, keep_result=0),
+        # Hourly, but each repo is read at most once a day.
+        cron(check_opt_outs, minute=50, second=0, unique=True, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

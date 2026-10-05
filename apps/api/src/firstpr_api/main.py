@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
+import sentry_sdk
 from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -18,6 +19,7 @@ from firstpr_api import (
     health,
     issues,
     notifications,
+    ops,
     profile,
     progress,
     public,
@@ -44,6 +46,14 @@ def create_app(
 ) -> FastAPI:
     """Build the app. Tests pass their own engine, Redis, GitHub transport or checks."""
     settings = settings or Settings()
+    if settings.sentry_dsn:
+        # Errors go to Sentry with ids only: no request bodies, cookies or tokens.
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.environment,
+            send_default_pii=False,
+            traces_sample_rate=0.0,
+        )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -101,7 +111,9 @@ def create_app(
     v1.include_router(notifications.router)
     v1.include_router(progress.router)
     v1.include_router(public.router)
+    v1.include_router(ops.router)
     v1.include_router(admin.router)
     v1.include_router(webhooks.router)
     app.include_router(v1)
+    app.middleware("http")(ops.security_and_counts)
     return app

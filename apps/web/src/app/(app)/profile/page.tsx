@@ -9,6 +9,8 @@ import { timeAgo } from "@/components/issue-bits";
 import {
   getJson,
   post,
+  problem as problemText,
+  send,
   sendJson,
   type Profile,
   type Progress,
@@ -185,6 +187,8 @@ export default function ProfilePage() {
         {visibility.error ? <p className="mt-2 text-sm text-warn">{visibility.error.message}</p> : null}
       </section>
 
+      <DeleteAccount handle={me.handle} />
+
       <section className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface p-5">
         <Link href="/settings" className="rounded-md border border-line px-4 py-2 font-semibold">
           Settings
@@ -200,5 +204,57 @@ export default function ProfilePage() {
         {problem ? <p className="text-sm text-warn">{problem}</p> : null}
       </section>
     </main>
+  );
+}
+
+function DeleteAccount({ handle }: { handle: string }) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [typed, setTyped] = useState("");
+  const [problem, setProblem] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function remove() {
+    setBusy(true);
+    const resp = await send("/api/v1/me", { method: "DELETE", json: { confirm: typed } });
+    if (resp.ok) {
+      queryClient.clear();
+      router.replace("/?signin=deleted");
+      return;
+    }
+    setBusy(false);
+    setProblem(await problemText(resp, "Deleting did not work"));
+  }
+
+  return (
+    <section className="rounded-lg border border-warn/40 bg-surface p-5">
+      <h2 className="mb-1 font-semibold">Delete my account</h2>
+      <p className="mb-3 text-sm text-ink-2">
+        Deletes everything FirstPR stores about you, at once: profile, skills, picks, workspaces,
+        pull request tracking, notifications, XP, badges and activity. Your forks, branches,
+        Codespaces and pull requests on GitHub are yours and stay there. To also take back
+        FirstPR&apos;s access, revoke the app at github.com/settings/applications.
+      </p>
+      <label className="flex flex-col gap-1 text-sm">
+        <span>
+          Type <span className="font-mono font-semibold">{handle}</span> to confirm
+        </span>
+        <input
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          autoComplete="off"
+          className="max-w-xs rounded-md border border-line bg-bg px-3 py-2 font-mono"
+        />
+      </label>
+      <button
+        type="button"
+        onClick={remove}
+        disabled={busy || typed.trim().toLowerCase() !== handle.toLowerCase()}
+        className="mt-3 rounded-md border border-warn px-4 py-2 font-semibold text-warn disabled:opacity-40"
+      >
+        {busy ? "Deleting" : "Delete my account and data"}
+      </button>
+      {problem ? <p className="mt-2 text-sm text-warn">{problem}</p> : null}
+    </section>
   );
 }

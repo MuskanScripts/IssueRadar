@@ -22,6 +22,7 @@ from sqlalchemy import exists, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from firstpr_platform import plan
 from firstpr_platform.db import (
     ACTIVE,
     CatalogueRepo,
@@ -193,7 +194,8 @@ async def pool(db: AsyncSession, user_id: int, taste: Taste) -> set[str]:
         n.lower()
         for n in await db.scalars(select(Watch.repo_full_name).where(Watch.user_id == user_id))
     }
-    return (chosen or catalogue) | watched
+    # Maintainers who opted out never get FirstPR users sent their way.
+    return ((chosen or catalogue) | watched) - await plan.opted_out(db)
 
 
 def shuffle_key(seed: str, card_id: int) -> str:

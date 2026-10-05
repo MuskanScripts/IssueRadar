@@ -91,6 +91,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
             <ReconnectBanner me={me} />
             {children}
+            <footer className="mt-8 flex flex-wrap gap-x-6 gap-y-1 border-t border-line pt-4 text-sm text-ink-2">
+              <span>Something wrong or missing?</span>
+              <a href="/feedback" className="underline">
+                Send feedback
+              </a>
+              <a href="/maintainers" className="underline">
+                For maintainers
+              </a>
+            </footer>
           </>
         )}
       </AuthGate>

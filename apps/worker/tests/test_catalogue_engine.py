@@ -98,3 +98,22 @@ async def test_tracking_reads_recorded_pull_requests(catalogue_url: str) -> None
     statuses = {t.facts.number: t.status.status.value for t in result.pulls}
     assert statuses == {16: "waiting_for_review", 14: "merged"}
     assert all(r.method == "GET" for r in fake.requests)
+
+
+def test_the_catalogue_database_is_created_when_missing() -> None:
+    url = os.environ.get("FIRSTPR_TEST_CATALOGUE_URL")
+    if not url or not url.startswith("postgresql"):
+        pytest.skip("needs Postgres (CI sets FIRSTPR_TEST_CATALOGUE_URL)")
+    from sqlalchemy import create_engine, make_url, text
+
+    from firstpr_worker.catalogue import ensure_database
+
+    target = make_url(url).set(database="firstpr_catalogue_created_by_test")
+    admin = create_engine(target.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    with admin.connect() as conn:
+        conn.execute(text(f'DROP DATABASE IF EXISTS "{target.database}"'))
+    assert ensure_database(target.render_as_string(hide_password=False)) is True
+    assert ensure_database(target.render_as_string(hide_password=False)) is False
+    with admin.connect() as conn:
+        conn.execute(text(f'DROP DATABASE "{target.database}"'))
+    admin.dispose()

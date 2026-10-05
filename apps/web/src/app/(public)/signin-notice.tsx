@@ -6,6 +6,9 @@ const MESSAGES: Record<string, string> = {
   cancelled: "Sign-in was cancelled on GitHub. You can try again any time.",
   expired: "That sign-in link expired or was already used. Please sign in again.",
   failed: "GitHub did not accept the sign-in. Please try again.",
+  deleted: "Your account and everything FirstPR stored about you are deleted.",
+  invite:
+    "FirstPR is open to invited testers for now. Ask for an invite with the Feedback link below, and we will let you know when it opens to everyone.",
 };
 
 export function SignInNotice() {

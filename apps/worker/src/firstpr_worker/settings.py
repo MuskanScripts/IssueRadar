@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import make_url
+
+from firstpr_platform.db import database_url
 
 
 class Settings(BaseSettings):
@@ -13,9 +16,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://firstpr:firstpr@localhost:5432/firstpr"
     # The engine's own database: repos, issues, PRs, ETags. Separate, because the
     # engine keeps the schema it already has for the CLI.
-    catalogue_database_url: str = (
-        "postgresql+psycopg://firstpr:firstpr@localhost:5432/firstpr_catalogue"
-    )
+    # Empty: the same server as database_url, database "firstpr_catalogue" (made
+    # on first start when missing).
+    catalogue_database_url: str = ""
     redis_url: str = "redis://localhost:6379/0"
 
     # The GitHub App: its own token syncs the shared catalogue.
@@ -41,10 +44,26 @@ class Settings(BaseSettings):
     posthog_key: str = ""
     posthog_host: str = "https://us.i.posthog.com"
 
+    # Error reports. Empty: none are sent.
+    sentry_dsn: str = ""
+    # development, staging or production; shown in Sentry.
+    environment: str = "development"
+
     # Personal syncs only run for people who used the site in this many days.
     active_days: int = 14
     # Stop starting new requests when this share of a token's hourly limit is left.
     budget_pause_share: float = 0.2
+
+    @model_validator(mode="after")
+    def _urls(self) -> Settings:
+        self.database_url = database_url(self.database_url)
+        if not self.catalogue_database_url:
+            platform = make_url(self.database_url)
+            self.catalogue_database_url = platform.set(
+                database="firstpr_catalogue"
+            ).render_as_string(hide_password=False)
+        self.catalogue_database_url = database_url(self.catalogue_database_url)
+        return self
 
     @property
     def app_configured(self) -> bool:
