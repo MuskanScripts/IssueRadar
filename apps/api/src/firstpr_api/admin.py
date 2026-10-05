@@ -15,7 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from firstpr_api.deps import Jobs, get_db, get_jobs, get_redis, require_admin, require_csrf
 from firstpr_api.health import run_check
 from firstpr_platform import plan
-from firstpr_platform.db import CatalogueRepo, RepoSync, WebhookEvent, utcnow
+from firstpr_platform.db import (
+    CatalogueRepo,
+    FeatureInterest,
+    IssueCard,
+    RepoSync,
+    WebhookEvent,
+    utcnow,
+)
 
 # Must match BUDGET_PREFIX in apps/worker.
 BUDGET_PREFIX = "firstpr:budget:"
@@ -39,6 +46,9 @@ class SyncOverview(BaseModel):
     budgets: dict[str, dict[str, Any]]
     webhooks_last_hour: int
     webhooks_waiting: int
+    issue_cards: int
+    # "I want this" clicks per coming-soon feature.
+    interest: dict[str, int]
     repos: list[RepoRow]
 
 
@@ -89,12 +99,19 @@ async def overview(
     waiting = await db.scalar(
         select(func.count()).select_from(WebhookEvent).where(WebhookEvent.processed_at.is_(None))
     )
+    cards = await db.scalar(select(func.count()).select_from(IssueCard))
+    grouped = await db.execute(
+        select(FeatureInterest.feature, func.count()).group_by(FeatureInterest.feature)
+    )
+    interest = {feature: count for feature, count in grouped.all()}
     worker = await run_check(request.app.state.checks["worker"])
     return SyncOverview(
         worker=worker,
         budgets=budgets,
         webhooks_last_hour=recent or 0,
         webhooks_waiting=waiting or 0,
+        issue_cards=cards or 0,
+        interest=interest,
         repos=rows,
     )
 

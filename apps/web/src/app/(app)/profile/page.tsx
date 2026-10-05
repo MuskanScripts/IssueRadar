@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { post } from "@/lib/api";
@@ -51,6 +52,14 @@ export default function ProfilePage() {
           <dt className="text-ink-2">Email</dt>
           <dd>{me.email ?? "Not shared"}</dd>
         </dl>
+      </section>
+
+      <section className="rounded-lg border border-line bg-surface p-5">
+        <h2 className="mb-1 font-semibold">Level, skills and starter packs</h2>
+        <p className="mb-3 text-sm text-ink-2">Your daily pick and Explore use these.</p>
+        <Link href="/onboarding" className="rounded-md border border-line px-4 py-2 font-semibold">
+          Change them
+        </Link>
       </section>
 
       <section className="rounded-lg border border-line bg-surface p-5">

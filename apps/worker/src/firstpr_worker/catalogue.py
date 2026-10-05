@@ -8,19 +8,22 @@ each token is responsible for, through the engine's own per-user watchlists.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 import httpx
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from issueradar.config.settings import Settings, load_settings
+from issueradar.engine import coach
 from issueradar.engine.rules import RepoRules, load_packs, load_rules
+from issueradar.engine.text import file_paths
 from issueradar.github import GitHubClient
-from issueradar.radar import Radar
+from issueradar.radar import Preloaded, Radar, repo_stack
 from issueradar.storage.db import Database, open_database
 from issueradar.storage.etag_cache import SqlEtagCache
-from issueradar.storage.models import LOCAL_USER_ID, User, Watchlist
+from issueradar.storage.models import LOCAL_USER_ID, Issue, Repo, User, Watchlist, as_utc
 from issueradar.sync.enrich import Enricher
 from issueradar.sync.service import RepoOutcome, SyncService
 
@@ -39,6 +42,39 @@ class SyncResult:
     outcomes: list[RepoOutcome]
     message: str | None
     budget: dict[str, Any]
+
+
+@dataclass
+class Card:
+    """One open issue as the platform's issue_cards table stores it."""
+
+    repo_full_name: str
+    number: int
+    title: str
+    url: str | None
+    labels: list[str]
+    repo_description: str | None
+    language: str | None
+    languages: list[str]
+    frameworks: list[str]
+    domains: list[str]
+    paths: list[str]
+    stars: int
+    comments: int
+    opened_at: datetime | None
+    updated_at: datetime | None
+    availability: str
+    availability_reasons: list[str]
+    tier: str
+    difficulty_score: int
+    time_bucket: str
+    issue_type: str
+    difficulty_reasons: list[str]
+    discussion_first: bool
+    health: int | None
+    health_reasons: list[str]
+    checklist: list[str] = field(default_factory=list)
+    repo_notes: str | None = None
 
 
 def pack_repos() -> list[str]:
@@ -114,3 +150,66 @@ class Catalogue:
             "paused": report.status == "interrupted",
         }
         return SyncResult(report.status, report.outcomes, report.message, budget)
+
+    def cards(self, repos: set[str]) -> dict[str, list[Card]]:
+        """Every open issue of these repos with the engine's verdicts, by repo.
+
+        Repos the engine has no data for are left out, so the caller can tell
+        "no open issues" (an empty list) from "not synced yet" (missing).
+        """
+        radar = Radar(self.db, self.settings, self.rules, None)
+        out: dict[str, list[Card]] = {}
+        wanted = {r.lower() for r in repos}
+        if not wanted:
+            return out
+        with self.db.sessions() as session:
+            found = list(
+                session.scalars(select(Repo).where(func.lower(Repo.full_name).in_(wanted)))
+            )
+            preloaded = Preloaded.load(session, {r.id for r in found})
+            for repo in found:
+                tech = repo_stack(repo, self.settings)
+                issues = session.scalars(
+                    select(Issue).where(Issue.repo_id == repo.id, Issue.state == "open")
+                )
+                cards = out.setdefault(repo.full_name, [])
+                if repo.archived or repo.disabled:
+                    continue
+                for issue in issues:
+                    report = radar.evaluate(session, issue, repo, preloaded)
+                    cards.append(
+                        Card(
+                            repo_full_name=repo.full_name,
+                            number=issue.number,
+                            title=issue.title,
+                            url=issue.html_url,
+                            labels=list(issue.labels),
+                            repo_description=repo.description,
+                            language=repo.language,
+                            languages=tech.languages,
+                            frameworks=tech.frameworks,
+                            domains=tech.domains,
+                            paths=file_paths(issue.body or "")[:20],
+                            stars=repo.stars,
+                            comments=issue.comments_count,
+                            opened_at=as_utc(issue.gh_created_at),
+                            updated_at=report.updated_at,
+                            availability=report.availability.state.value,
+                            availability_reasons=[str(r) for r in report.availability.reasons],
+                            tier=report.difficulty.tier.value,
+                            difficulty_score=report.difficulty.score,
+                            time_bucket=report.difficulty.time_bucket.value,
+                            issue_type=report.difficulty.issue_type.value,
+                            difficulty_reasons=[str(r) for r in report.difficulty.reasons],
+                            discussion_first=report.difficulty.discussion_first,
+                            health=report.health_score,
+                            health_reasons=report.health_reasons,
+                            checklist=coach.checklist(
+                                repo.full_name,
+                                report.flags,
+                                discussion_first=report.difficulty.discussion_first,
+                            ),
+                            repo_notes=report.repo_notes,
+                        )
+                    )
+        return out

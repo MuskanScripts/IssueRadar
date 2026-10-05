@@ -1,7 +1,8 @@
-"""Database tables for the platform: accounts, sessions, watches and sync state.
+"""Database tables for the platform: accounts, sessions, watches, sync state,
+profiles, issue cards, daily picks and recommendation logs.
 
 Types stay portable (no Postgres-only columns) so tests can run on SQLite.
-Production runs on Postgres; migrations live in apps/api/migrations.
+Production runs on Postgres; migrations live in packages/platform/migrations.
 """
 
 from __future__ import annotations
@@ -11,15 +12,20 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
+    Boolean,
     DateTime,
+    Float,
     ForeignKey,
+    Index,
     Integer,
     LargeBinary,
     String,
     Text,
     TypeDecorator,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -157,6 +163,139 @@ class WebhookEvent(Base):
     received_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     processed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     result: Mapped[str | None] = mapped_column(String(200))
+
+
+class Profile(Base):
+    """What a user told us in onboarding. One row per user, made on first save."""
+
+    __tablename__ = "profiles"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    # The engine's tiers: beginner, intermediate or pro.
+    level: Mapped[str] = mapped_column(String(20), default="beginner")
+    # Starter pack keys. Empty means every repo in the catalogue.
+    packs: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # IANA name from the browser, so "today" means the user's own day.
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC")
+    onboarded_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+class UserSkill(Base):
+    __tablename__ = "user_skills"
+    __table_args__ = (UniqueConstraint("user_id", "kind", "name"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))  # languages, frameworks, domains
+    name: Mapped[str] = mapped_column(String(50))
+    level: Mapped[str] = mapped_column(String(20))  # learning, medium, strong
+
+
+class IssueCard(Base):
+    """One open issue with the engine's verdicts, written by the worker after each sync.
+
+    The API reads only this table, so a page never runs the engine over the
+    whole catalogue. Fit is per user and is worked out on top of it.
+    """
+
+    __tablename__ = "issue_cards"
+    __table_args__ = (UniqueConstraint("repo_full_name", "number"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
+    repo_full_name: Mapped[str] = mapped_column(String(200), index=True)
+    number: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(String(500))
+    labels: Mapped[list[str]] = mapped_column(JSON, default=list)
+    repo_description: Mapped[str | None] = mapped_column(Text)
+    language: Mapped[str | None] = mapped_column(String(100))
+    languages: Mapped[list[str]] = mapped_column(JSON, default=list)
+    frameworks: Mapped[list[str]] = mapped_column(JSON, default=list)
+    domains: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # File paths named in the issue body; they decide the language when present.
+    paths: Mapped[list[str]] = mapped_column(JSON, default=list)
+    stars: Mapped[int] = mapped_column(Integer, default=0)
+    comments: Mapped[int] = mapped_column(Integer, default=0)
+    opened_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    updated_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    availability: Mapped[str] = mapped_column(String(20), index=True)
+    availability_reasons: Mapped[list[str]] = mapped_column(JSON, default=list)
+    tier: Mapped[str] = mapped_column(String(20))
+    difficulty_score: Mapped[int] = mapped_column(Integer, default=0)
+    time_bucket: Mapped[str] = mapped_column(String(30))
+    issue_type: Mapped[str] = mapped_column(String(20))
+    difficulty_reasons: Mapped[list[str]] = mapped_column(JSON, default=list)
+    discussion_first: Mapped[bool] = mapped_column(Boolean, default=False)
+    health: Mapped[int | None] = mapped_column(Integer)
+    health_reasons: Mapped[list[str]] = mapped_column(JSON, default=list)
+    checklist: Mapped[list[str]] = mapped_column(JSON, default=list)
+    repo_notes: Mapped[str | None] = mapped_column(Text)
+    # When the issue last changed in a way people care about (new activity, claimed).
+    changed_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    refreshed_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+ACTIVE = "active"
+
+
+class Reservation(Base):
+    """An issue held for one user. At most one active hold per issue, for 48 hours."""
+
+    __tablename__ = "issue_reservations"
+    __table_args__ = (
+        Index(
+            "uq_issue_reservations_active",
+            "card_id",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+            sqlite_where=text("status = 'active'"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    card_id: Mapped[int] = mapped_column(ForeignKey("issue_cards.id", ondelete="CASCADE"))
+    # active, swapped (the user asked for another), expired (time ran out or a new day).
+    status: Mapped[str] = mapped_column(String(20), default=ACTIVE)
+    # The user's local date the pick belongs to, YYYY-MM-DD.
+    day: Mapped[str] = mapped_column(String(10))
+    fit: Mapped[float] = mapped_column(Float)
+    reserved_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+    card: Mapped[IssueCard] = relationship(lazy="joined")
+
+
+class RecommendationEvent(Base):
+    """Every recommendation shown and what the user did with it, for a learned ranking later."""
+
+    __tablename__ = "recommendation_events"
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    repo_full_name: Mapped[str] = mapped_column(String(200))
+    number: Mapped[int] = mapped_column(Integer)
+    surface: Mapped[str] = mapped_column(String(20))  # daily, explore, issue
+    action: Mapped[str] = mapped_column(String(20))  # shown, swapped, opened, github, expired
+    fit: Mapped[float | None] = mapped_column(Float)
+    parts: Mapped[dict[str, float]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class FeatureInterest(Base):
+    """An "I want this" click on a coming-soon feature. One per user and feature."""
+
+    __tablename__ = "feature_interest"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    feature: Mapped[str] = mapped_column(String(40), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

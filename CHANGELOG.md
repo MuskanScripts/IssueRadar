@@ -17,6 +17,7 @@ All notable changes to this project are documented here. The format follows
 - Platform sign-in with GitHub: a GitHub App user-authorization flow with state and PKCE, encrypted GitHub tokens, server-side sessions behind an HTTP-only cookie, CSRF checks on writes, token refresh, and a reconnect banner when GitHub access stops working. The web app has a sign-in button, a signed-in area and a profile page with Sign out.
 - Platform sync: the worker syncs the shared catalogue (seeded from the starter packs) with the GitHub App's installation token, and repos only one person watches with that person's own token. GitHub webhooks are checked, stored once and handled by the worker. People can watch public repos through `/api/v1/me/watches`; admins get a sync overview at `/admin`. Shared platform code moved to `packages/platform`.
 - The engine's GitHub client takes an optional `cache_identity`, so ETags keep working when a token rotates.
+- Platform daily pick: three-step onboarding (level, skills, starter packs), a fit score per user and issue built from the engine's scores, and one issue a day held for 48 hours with "Show me another" (3 a day). Two people never hold the same issue. Explore has filters, best fit / recently active / shuffled order, cursor paging and a Refresh button; the issue page explains why an issue is free and checks GitHub live when the data is old. Every recommendation and what the user did with it is logged. Later features show as "Coming soon" with an "I want this" button.
 
 ## [0.2.0] - 2026-10-03
 

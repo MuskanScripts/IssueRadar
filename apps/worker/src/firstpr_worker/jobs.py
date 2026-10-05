@@ -7,17 +7,21 @@ it with fakes.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
+from dataclasses import asdict
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import func, select
 
-from firstpr_platform import accounts, plan
+from firstpr_platform import accounts, picks, plan
 from firstpr_platform.db import (
     CatalogueRepo,
     GitHubAccount,
+    IssueCard,
+    Profile,
     RepoSync,
     Session,
     User,
@@ -25,7 +29,7 @@ from firstpr_platform.db import (
     WebhookEvent,
     utcnow,
 )
-from firstpr_worker.catalogue import APP_OWNER, SyncResult, engine_user_id, pack_repos
+from firstpr_worker.catalogue import APP_OWNER, Card, SyncResult, engine_user_id, pack_repos
 
 # Must match BUDGET_PREFIX in apps/api.
 BUDGET_PREFIX = "firstpr:budget:"
@@ -83,6 +87,83 @@ async def _budget(ctx: dict[str, Any], key: str, budget: dict[str, Any]) -> None
         await ctx["redis"].set(BUDGET_PREFIX + key, value, ex=BUDGET_TTL_SECONDS)
 
 
+async def _store_cards(ctx: dict[str, Any], by_repo: dict[str, list[Card]]) -> int:
+    """Replace the issue cards of these repos with the engine's latest verdicts."""
+    now = utcnow()
+    stored = 0
+    async with ctx["db"]() as db:
+        for repo, cards in by_repo.items():
+            existing = {
+                row.number: row
+                for row in await db.scalars(
+                    select(IssueCard).where(func.lower(IssueCard.repo_full_name) == repo.lower())
+                )
+            }
+            for card in cards:
+                values = asdict(card)
+                row = existing.pop(card.number, None)
+                if row is None:
+                    db.add(IssueCard(**values, changed_at=now, refreshed_at=now))
+                else:
+                    # "Changed" is what people notice: new activity, or claimed or freed.
+                    if row.availability != card.availability or row.updated_at != card.updated_at:
+                        row.changed_at = now
+                    for key, value in values.items():
+                        setattr(row, key, value)
+                    row.refreshed_at = now
+                stored += 1
+            # Closed, or gone from GitHub since the last sync.
+            for row in existing.values():
+                await db.delete(row)
+        await db.commit()
+    return stored
+
+
+async def _export(ctx: dict[str, Any], result: SyncResult) -> None:
+    names = {o.full_name for o in result.outcomes if o.status in ("synced", "archived")}
+    if names:
+        by_repo = await asyncio.to_thread(ctx["catalogue"].cards, names)
+        await _store_cards(ctx, by_repo)
+
+
+async def refresh_cards(ctx: dict[str, Any]) -> int:
+    """Rebuild every issue card from what the engine already stored (no GitHub calls)."""
+    async with ctx["db"]() as db:
+        sync_plan = await plan.build(db)
+    names = sync_plan.app | {r for repos in sync_plan.by_user.values() for r in repos}
+    by_repo = await asyncio.to_thread(ctx["catalogue"].cards, names)
+    return await _store_cards(ctx, by_repo)
+
+
+async def cards_if_empty(ctx: dict[str, Any]) -> bool:
+    """Queue a rebuild when there are no cards yet, e.g. the first start after an upgrade."""
+    async with ctx["db"]() as db:
+        if await db.scalar(select(func.count()).select_from(IssueCard)):
+            return False
+    await ctx["redis"].enqueue_job("refresh_cards", _job_id="refresh-cards")
+    return True
+
+
+async def make_daily_picks(ctx: dict[str, Any]) -> int:
+    """Hold today's pick for everyone active lately whose local day has none yet."""
+    since = utcnow() - timedelta(days=ctx["settings"].active_days)
+    async with ctx["db"]() as db:
+        active = select(Session.user_id).where(Session.last_seen_at >= since)
+        ids = list(
+            await db.scalars(
+                select(Profile.user_id).where(
+                    Profile.onboarded_at.is_not(None), Profile.user_id.in_(active)
+                )
+            )
+        )
+    made = 0
+    for user_id in ids:
+        async with ctx["db"]() as db:
+            if await picks.todays_pick(db, user_id) is not None:
+                made += 1
+    return made
+
+
 async def sync_catalogue(ctx: dict[str, Any]) -> str:
     """The shared catalogue, with the app's own installation token."""
     tokens = ctx.get("app_tokens")
@@ -93,6 +174,7 @@ async def sync_catalogue(ctx: dict[str, Any]) -> str:
     token = await tokens.token()
     result = await ctx["catalogue"].sync(APP_OWNER, sync_plan.app, token, "app")
     await _record(ctx, result, sync_plan.app, plan.APP)
+    await _export(ctx, result)
     await _budget(ctx, "app", result.budget)
     return f"{result.status}: {len(result.outcomes)} of {len(sync_plan.app)} repos"
 
@@ -117,6 +199,7 @@ async def sync_user(ctx: dict[str, Any], user_id: int) -> str:
         return "skipped: GitHub access needs reconnecting"
     result = await ctx["catalogue"].sync(owner, repos, token, f"user:{user_id}")
     await _record(ctx, result, repos, plan.USER)
+    await _export(ctx, result)
     await _budget(ctx, f"user:{user_id}", result.budget)
     return f"{result.status}: {len(result.outcomes)} of {len(repos)} repos"
 
@@ -125,8 +208,8 @@ async def sync_active_users(ctx: dict[str, Any]) -> int:
     """Queue a personal sync for everyone who used the site recently and watches repos."""
     since = utcnow() - timedelta(days=ctx["settings"].active_days)
     async with ctx["db"]() as db:
-        active = select(distinct(Session.user_id)).where(Session.last_seen_at >= since)
-        watching = select(distinct(Watch.user_id))
+        active = select(Session.user_id).where(Session.last_seen_at >= since).distinct()
+        watching = select(Watch.user_id).distinct()
         ids = list(await db.scalars(active.where(Session.user_id.in_(watching))))
     for user_id in ids:
         await ctx["redis"].enqueue_job("sync_user", user_id, _job_id=f"sync-user:{user_id}")
