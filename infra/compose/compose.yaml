@@ -1,9 +1,10 @@
-# The FirstPR platform for local development: Postgres, Redis, the API and the worker.
+# The FirstPR platform for local development: Postgres, Redis, the API, the worker,
+# the Next.js web app and a proxy in front that puts them on one address.
 # This is separate from the root docker-compose.yml, which runs the self-hosted CLI dashboard.
 #
 #   docker compose -f infra/compose/compose.yaml up --build
 #
-# Then open http://localhost:8000/api/v1/health
+# Then open http://localhost:8080 (the API is at http://localhost:8080/api/v1/health)
 
 name: firstpr-platform
 
@@ -37,8 +38,6 @@ services:
     environment:
       FIRSTPR_DATABASE_URL: postgresql+psycopg://firstpr:firstpr@postgres:5432/firstpr
       FIRSTPR_REDIS_URL: redis://redis:6379/0
-    ports:
-      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,6 +53,25 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    depends_on:
+      - api
+
+  proxy:
+    image: caddy:2-alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - api
+      - web
 
 volumes:
   postgres:

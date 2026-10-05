@@ -1,0 +1,11 @@
+# One address for the whole platform: /api goes to FastAPI, everything else to Next.js.
+# The upstreams can be overridden for running outside Compose.
+:80 {
+	encode gzip
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM:api:8000}
+	}
+	handle {
+		reverse_proxy {$WEB_UPSTREAM:web:3000}
+	}
+}

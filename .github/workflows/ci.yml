@@ -172,3 +172,26 @@ jobs:
         run: |
           docker build -f apps/api/Dockerfile -t firstpr-api:ci .
           docker build -f apps/worker/Dockerfile -t firstpr-worker:ci .
+
+  platform-web:
+    name: Platform web app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+      - run: npm run typecheck
+      - name: Build image
+        working-directory: .
+        run: docker build -f apps/web/Dockerfile -t firstpr-web:ci .

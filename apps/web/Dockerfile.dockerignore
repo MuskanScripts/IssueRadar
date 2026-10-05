@@ -1,0 +1,5 @@
+# Build context is the repository root; only the web app goes in.
+*
+!apps/web
+apps/web/node_modules
+apps/web/.next
