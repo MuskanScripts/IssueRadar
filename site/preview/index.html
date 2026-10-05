@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A clickable preview of the FirstPR platform with sample data: daily pick, workspace flow, PR tracker, activity calendar and more.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>FirstPR Preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: fixed left rail + one working column; the next contribution is the one loud card, everything else stays quiet. */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --surface-2: #eaeef2;
+  --ink: #14202b;
+  --ink-2: #51606e;
+  --line: #d9e0e7;
+  --accent: #0b6b63;
+  --accent-ink: #ffffff;
+  --accent-soft: #d9efec;
+  --warm: #b4570b;
+  --warm-soft: #fbe9d6;
+  --good: #1f7a3d;
+  --good-soft: #dcf1e2;
+  --bad: #b3322b;
+  --bad-soft: #f8dfdd;
+  --mid: #8a6a00;
+  --mid-soft: #f6ecc4;
+  --cal-0: #e3e8ed; --cal-1: #b5e3c1; --cal-2: #6cc287; --cal-3: #2f9a56; --cal-4: #146b36;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1419; --surface: #151d24; --surface-2: #1c2630; --ink: #e6edf3; --ink-2: #93a3b2;
+    --line: #26323d; --accent: #3fc1b3; --accent-ink: #06201d; --accent-soft: #123631;
+    --warm: #f0a35e; --warm-soft: #3a2713; --good: #5fd48a; --good-soft: #143222;
+    --bad: #f08a83; --bad-soft: #3a1b19; --mid: #e3c25a; --mid-soft: #342b0d; --cal-0: #1f2a34; --cal-1: #134a2b; --cal-2: #1f7a41; --cal-3: #36b062; --cal-4: #6fe39a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1419; --surface: #151d24; --surface-2: #1c2630; --ink: #e6edf3; --ink-2: #93a3b2;
+  --line: #26323d; --accent: #3fc1b3; --accent-ink: #06201d; --accent-soft: #123631;
+  --warm: #f0a35e; --warm-soft: #3a2713; --good: #5fd48a; --good-soft: #143222;
+  --bad: #f08a83; --bad-soft: #3a1b19; --mid: #e3c25a; --mid-soft: #342b0d; --cal-0: #1f2a34; --cal-1: #134a2b; --cal-2: #1f7a41; --cal-3: #36b062; --cal-4: #6fe39a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14.5px; line-height: 1.5; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); }
+.num { font-variant-numeric: tabular-nums; }
+
+.shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); min-height: 100%; }
+.rail { padding: 20px 14px; border-right: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; gap: 22px; position: sticky; top: 0; align-self: start; height: 100vh; }
+.logo { display: flex; align-items: center; gap: 10px; font-family: var(--f-display); font-weight: 700; font-size: 19px; padding: 0 8px; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; color: var(--ink-2); font-weight: 500; }
+.nav button:hover { background: var(--surface-2); color: var(--ink); }
+.nav button[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.nav svg { width: 17px; height: 17px; flex: none; }
+.rail-foot { margin-top: auto; font-size: 12px; color: var(--ink-2); padding: 0 8px; }
+.me { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-top: 1px solid var(--line); margin-top: 10px; border-radius: 6px; width: 100%; }
+.me:hover, .me[aria-current="page"] { background: var(--surface-2); }
+.me:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.me .dot-warn { width: 9px; height: 9px; border-radius: 50%; background: var(--warm); margin-left: auto; }
+.reconnect { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: var(--warm-soft); border: 1px solid color-mix(in srgb, var(--warm) 45%, transparent); border-left: 4px solid var(--warm); padding: 12px 14px; border-radius: 8px; margin-bottom: 20px; }
+.reconnect .txt { flex: 1 1 320px; min-width: 0; }
+.reconnect b { color: var(--warm); }
+.reconnect .sub { margin-top: 2px; }
+.prof-head { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.avatar.xl { width: 72px; height: 72px; font-size: 30px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13.5px; }
+.kv dt { color: var(--ink-2); }
+.kv dd { margin: 0; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.status.ok { color: var(--good); } .status.bad { color: var(--warm); }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 600; font-family: var(--f-display); }
+
+.main { padding: 26px clamp(16px, 3vw, 40px) 60px; max-width: 1060px; width: 100%; }
+.banner { background: var(--warm-soft); color: var(--warm); border: 1px solid color-mix(in srgb, var(--warm) 30%, transparent); padding: 8px 12px; border-radius: 6px; font-size: 12.5px; margin-bottom: 22px; }
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.top h1 { font-size: clamp(24px, 3.4vw, 32px); }
+.sub { color: var(--ink-2); margin-top: 4px; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; }
+.stat b { display: block; font-family: var(--f-display); font-size: 22px; line-height: 1.1; }
+.stat span { font-size: 12px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.streak b { color: var(--warm); }
+
+.grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+.col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; min-width: 0; }
+.panel h2 { font-size: 16px; margin-bottom: 12px; }
+.label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); font-weight: 600; }
+
+.next { border: 2px solid var(--accent); background: var(--surface); border-radius: 10px; padding: 22px; display: grid; gap: 14px; }
+.next h2 { font-size: clamp(20px, 2.6vw, 26px); }
+.next .head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.timer { font-family: var(--f-mono); font-size: 13px; background: var(--accent-soft); color: var(--accent); padding: 3px 9px; border-radius: 99px; }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chip { font-size: 12px; padding: 2px 9px; border-radius: 99px; background: var(--surface-2); color: var(--ink-2); font-weight: 500; white-space: nowrap; }
+.chip.b { background: var(--good-soft); color: var(--good); }
+.chip.i { background: var(--mid-soft); color: var(--mid); }
+.chip.a { background: var(--bad-soft); color: var(--bad); }
+.chip.free { background: var(--good-soft); color: var(--good); }
+.chip.likely { background: var(--mid-soft); color: var(--mid); }
+.checks { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 16px; }
+.checks li { display: flex; gap: 8px; align-items: flex-start; }
+.checks svg { width: 16px; height: 16px; color: var(--good); flex: none; margin-top: 3px; }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: 6px; font-weight: 600; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+.fit { --p: 80; width: 52px; height: 52px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--surface-2) 0); display: grid; place-items: center; flex: none; }
+.fit i { font-style: normal; width: 40px; height: 40px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font-size: 12.5px; font-weight: 600; font-family: var(--f-mono); }
+
+.list { display: flex; flex-direction: column; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 13px 4px; border-top: 1px solid var(--line); text-align: left; background: none; border-left: 0; border-right: 0; border-bottom: 0; width: 100%; }
+.item:first-child { border-top: 0; }
+.item:hover { background: var(--surface-2); }
+.item .t { font-weight: 600; }
+.item .r { color: var(--ink-2); font-size: 12.5px; font-family: var(--f-mono); }
+
+.filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.filters input, .filters select, .field input, .field textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 6px; min-width: 0; }
+.filters input { flex: 1 1 200px; }
+
+.bar { height: 7px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.skill { display: grid; grid-template-columns: 78px 1fr 28px; gap: 10px; align-items: center; margin: 9px 0; font-size: 13px; }
+
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.steps li { display: flex; align-items: center; gap: 10px; color: var(--ink-2); }
+.steps li.done { color: var(--ink); }
+.steps li .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); flex: none; display: grid; place-items: center; }
+.steps li.done .dot { background: var(--good); border-color: var(--good); color: #fff; }
+.steps li.now .dot { border-color: var(--accent); border-top-color: transparent; animation: spin 0.8s linear infinite; }
+.steps svg { width: 11px; height: 11px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .steps li.now .dot { animation: none; } }
+
+.hint { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 9px 12px; border-radius: 0 6px 6px 0; margin-top: 8px; }
+.hint b { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+code, .code { font-family: var(--f-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+.field { display: grid; gap: 4px; margin-bottom: 12px; }
+.field label { font-size: 12.5px; font-weight: 600; }
+.field textarea { min-height: 120px; resize: vertical; font-family: var(--f-mono); font-size: 12.5px; }
+
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.badge { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 4px; }
+.badge.locked { opacity: 0.5; }
+.badge b { font-family: var(--f-display); }
+.badge span { font-size: 12.5px; color: var(--ink-2); }
+
+table { width: 100%; border-collapse: collapse; }
+.tw { overflow-x: auto; }
+th, td { text-align: left; padding: 9px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-2); border-top: 0; }
+tr.me-row td { background: var(--accent-soft); font-weight: 600; }
+
+.back { all: unset; cursor: pointer; color: var(--ink-2); font-weight: 500; margin-bottom: 14px; display: inline-block; }
+.back:hover { color: var(--accent); }
+.toast { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-weight: 500; z-index: 10; max-width: calc(100vw - 32px); }
+
+.cal-wrap { overflow-x: auto; padding-bottom: 4px; }
+.cal { display: grid; grid-template-rows: repeat(7, var(--c)); grid-auto-flow: column; grid-auto-columns: var(--c); gap: 3px; --c: 11px; width: max-content; }
+.cal.big { --c: 15px; gap: 4px; }
+.cal i { display: block; width: var(--c); height: var(--c); border-radius: 3px; background: var(--cal-0); position: relative; }
+.cal i.l1 { background: var(--cal-1); } .cal i.l2 { background: var(--cal-2); } .cal i.l3 { background: var(--cal-3); } .cal i.l4 { background: var(--cal-4); }
+.cal i.l4::after { content: ""; position: absolute; inset: 30%; border-radius: 50%; background: var(--surface); }
+.cal i.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+.cal i.pad { visibility: hidden; }
+.legend { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-2); margin-top: 8px; flex-wrap: wrap; }
+.legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; background: var(--cal-0); }
+.legend i.l1 { background: var(--cal-1); } .legend i.l2 { background: var(--cal-2); } .legend i.l3 { background: var(--cal-3); } .legend i.l4 { background: var(--cal-4); }
+.months { display: flex; font-size: 11px; color: var(--ink-2); margin-bottom: 4px; width: max-content; }
+.today-note { font-size: 13px; margin-top: 10px; }
+
+.hero { display: grid; gap: 18px; padding: clamp(18px, 4vw, 40px) 0 10px; }
+.hero h1 { font-size: clamp(32px, 5.6vw, 58px); line-height: 1.02; letter-spacing: -0.025em; max-width: 16ch; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lead { font-size: 17px; color: var(--ink-2); max-width: 56ch; }
+.counters { display: flex; gap: clamp(18px, 4vw, 44px); flex-wrap: wrap; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.counters b { display: block; font-family: var(--f-display); font-size: clamp(24px, 3.4vw, 34px); line-height: 1.05; }
+.counters span { font-size: 12.5px; color: var(--ink-2); }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--good); font-weight: 600; }
+.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.btn.big { padding: 12px 20px; font-size: 15.5px; }
+.section { margin-top: 38px; display: grid; gap: 14px; }
+.section > h2 { font-size: clamp(21px, 2.8vw, 28px); }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.pcard { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.pcard .t { font-weight: 600; }
+.pcard .why { font-size: 12.5px; color: var(--good); }
+.pcard.locked { position: relative; overflow: hidden; }
+.pcard.locked > .blur { filter: blur(5px); opacity: 0.6; pointer-events: none; display: grid; gap: 8px; }
+.pcard.locked > .over { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 14px; background: color-mix(in srgb, var(--surface) 55%, transparent); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.tile { border-top: 2px solid var(--accent); padding-top: 12px; display: grid; gap: 4px; }
+.tile b { font-family: var(--f-display); font-size: 16.5px; }
+.tile span { color: var(--ink-2); font-size: 13.5px; }
+details { border-top: 1px solid var(--line); padding: 12px 0; }
+details summary { cursor: pointer; font-weight: 600; }
+details p { margin-top: 6px; color: var(--ink-2); max-width: 65ch; }
+.final { background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: clamp(20px, 4vw, 36px); display: grid; gap: 12px; justify-items: start; margin-top: 38px; }
+.final h2 { font-size: clamp(22px, 3vw, 30px); }
+.final .btn { background: var(--accent-ink); color: var(--accent); border-color: var(--accent-ink); }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; font-weight: 600; color: var(--ink-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs button:focus-visible { outline: 2px solid var(--accent); }
+.rank { font-family: var(--f-mono); color: var(--ink-2); width: 2ch; display: inline-block; }
+.sheet { position: fixed; inset: 0; background: color-mix(in srgb, var(--ink) 45%, transparent); display: grid; place-items: center; padding: 16px; z-index: 20; }
+[hidden] { display: none !important; }
+.sheet-card { background: var(--surface); border-radius: 10px; padding: 24px; max-width: 420px; width: 100%; display: grid; gap: 12px; border: 1px solid var(--line); }
+.sheet-card h2 { font-size: 22px; }
+.sheet-card ul { margin: 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 4px; }
+.rail .btn.primary { margin: 0 4px; white-space: nowrap; font-size: 13px; padding: 8px 10px; }
+
+.soon { display: inline-block; font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 7px; border-radius: 99px; border: 1px dashed var(--ink-2); color: var(--ink-2); white-space: nowrap; vertical-align: middle; }
+.nav button .soon { margin-left: auto; font-size: 9.5px; padding: 0 5px; }
+.soonbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; border: 1px dashed var(--line); background: var(--surface-2); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+.soonbar .txt { flex: 1 1 260px; min-width: 0; display: grid; gap: 2px; }
+.soonmini { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); padding: 8px 0 0; }
+.soonmini b { color: var(--ink); font-weight: 600; }
+.paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.paths div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 4px; background: var(--surface); }
+
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.toolbar .upd { font-size: 12.5px; color: var(--ink-2); margin-right: auto; }
+.chip.new { background: var(--accent-soft); color: var(--accent); }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+.panel-head h2 { margin: 0; }
+.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; height: auto; flex-direction: row; align-items: center; padding: 10px 12px; gap: 12px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .nav { flex-direction: row; }
+  .nav button { white-space: nowrap; }
+  .rail-foot, .me-text, .me .dot-warn, .logo span { display: none !important; }
+  .me { border-top: 0; margin-top: 0; width: auto; padding: 4px; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .main { padding-top: 18px; }
+}
+</style>
+<style>html, body { height: 100%; } body { margin: 0; }</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12" stroke="var(--accent)" stroke-width="2"/><circle cx="14" cy="14" r="6.5" stroke="var(--accent)" stroke-width="2" opacity="0.55"/><path d="M14 14L22 7" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
+      <span>FirstPR</span>
+    </div>
+    <nav class="nav" id="nav" aria-label="Main"></nav>
+    <button class="btn primary" id="rail-signin" data-signin>Sign in with GitHub</button>
+    <button class="me" id="rail-me" data-go="profile" aria-label="Your profile" hidden><div class="avatar">M</div><div class="me-text"><div style="font-weight:600">Muskan</div><div class="label" style="text-transform:none;letter-spacing:0">Intermediate</div></div><span class="dot-warn" id="me-warn" hidden title="GitHub needs reconnecting"></span></button>
+    <div class="rail-foot">Preview with sample data</div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+<div id="toast" class="toast" hidden></div>
+<div id="sheet" class="sheet" hidden></div>
+
+<script>
+const ICON = {
+  home: '<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10" />',
+  explore: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+  practice: '<path d="M8 4l-5 8 5 8M16 4l5 8-5 8"/>',
+  prs: '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7M18 15.5V10a3 3 0 00-3-3h-3"/>',
+  progress: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  intro: '<path d="M12 2l2.6 6.4L21 9l-5 4.3L17.5 20 12 16.4 6.5 20 8 13.3 3 9l6.4-.6z"/>',
+  trending: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  paths: '<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 000-6H9a3 3 0 010-6h6.5"/>',
+  board: '<path d="M7 4h10v5a5 5 0 01-10 0zM7 6H4v2a3 3 0 003 3M17 6h3v2a3 3 0 01-3 3M12 14v4M8 20h8"/>'
+};
+const svg = (name) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
+const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+const NAV = [['home', 'Home'], ['explore', 'Explore'], ['practice', 'Practice'], ['prs', 'My PRs'], ['progress', 'Progress'], ['paths', 'Paths'], ['board', 'Leaderboard']];
+
+const ISSUES = [
+  { id: 1, repo: 'encode/httpx', num: 3128, title: 'Add a clear error when a proxy URL has no scheme', lang: 'Python', level: 'Intermediate', mins: 45, fit: 82, avail: 'free', health: 91, resp: '1.2 days', merged: 14,
+    why: ['Nobody is assigned and no pull request mentions it', 'Last comment was 11 days ago, with no claim', 'Maintainers replied to the last 9 new contributors within 2 days', '14 of the last 16 outside pull requests were merged'],
+    todo: ['Read the proxy parsing code in the client setup', 'Raise a clear error that names the bad value', 'Add a test next to the existing proxy tests', 'Run the test suite and the linter'],
+    hints: ['Start with where the proxy setting is turned into a URL object. The check belongs there.', 'There is already a similar check for a bad port. Match its wording and error type.', 'Look at the tests for proxies. A parametrized case with a missing scheme fits in well.'] },
+  { id: 2, repo: 'vitejs/vite', num: 18420, title: 'Docs: explain the base option for nested deploys', lang: 'TypeScript', level: 'Beginner', mins: 25, fit: 74, avail: 'free', health: 88, resp: '0.8 days', merged: 22,
+    why: ['Labeled "docs" and "good first issue"', 'No pull request or claim in 20 days', 'Maintainers replied within a day on the last 12 outside pull requests'],
+    todo: ['Find the base option page in the guide', 'Add a short example for deploying under a sub-path', 'Check the preview locally', 'Open the pull request with a before and after screenshot'],
+    hints: ['The page is under the guide, in the section on building for production.', 'One example is enough: a site served from /docs/.', 'Keep the tone of the neighbouring paragraphs.'] },
+  { id: 3, repo: 'pallets/click', num: 2731, title: 'Show the default value in help for flag options', lang: 'Python', level: 'Beginner', mins: 35, fit: 79, avail: 'likely', health: 84, resp: '2.1 days', merged: 11,
+    why: ['A comment 19 days ago said "I can take this" with no pull request since', 'The claim looks abandoned, so it is marked likely free', 'Maintainers are active and merge small fixes quickly'],
+    todo: ['Reproduce the missing default with a small script', 'Find where help text for options is built', 'Add the default for flags and update the snapshot test'],
+    hints: ['Reproduce first. A two-line command with a flag option shows it.', 'The help formatter already adds defaults for other option types.', 'Update the expected help output in the existing tests.'] },
+  { id: 4, repo: 'spring-projects/spring-boot', num: 41207, title: 'Fix typo in the actuator endpoint reference', lang: 'Java', level: 'Beginner', mins: 15, fit: 61, avail: 'free', health: 79, resp: '3.4 days', merged: 9,
+    why: ['Docs-only change in one file', 'Unassigned, no pull request', 'Contributors need to sign the contributor agreement first'],
+    todo: ['Find the line in the reference docs', 'Fix the wording', 'Sign the contributor agreement', 'Open the pull request'],
+    hints: ['Search the docs folder for the endpoint name.', 'Keep the change to the single line.', 'The bot will ask you to sign the agreement on your first pull request.'] },
+  { id: 5, repo: 'facebook/react', num: 29913, title: 'useDeferredValue example in the docs shows a stale value', lang: 'JavaScript', level: 'Intermediate', mins: 60, fit: 66, avail: 'free', health: 90, resp: '1.9 days', merged: 18,
+    why: ['Confirmed by a maintainer', 'No one has claimed it', 'Needs a code sandbox update as well as text'],
+    todo: ['Reproduce the stale value in the sandbox', 'Fix the example', 'Update the explanation', 'Check the live preview'],
+    hints: ['Open the example and type quickly. Watch the second list.', 'The deferred value should feed the slow list only.', 'The explanation paragraph mentions both values, so reword it too.'] },
+  { id: 6, repo: 'pytest-dev/pytest', num: 12644, title: 'Better message when a fixture is requested twice', lang: 'Python', level: 'Advanced', mins: 120, fit: 52, avail: 'free', health: 93, resp: '1.0 days', merged: 25,
+    why: ['A maintainer asked for a pull request', 'Touches fixture resolution, so it needs care', 'Very active repo with fast reviews'],
+    todo: ['Read how fixtures are resolved', 'Detect the duplicate request', 'Write the message and tests', 'Update the changelog fragment'],
+    hints: ['Fixture lookup happens in one module. Start there.', 'Check how other errors there are raised.', 'Add a changelog file named after the issue number.'] },
+  { id: 7, repo: 'astral-sh/ruff', num: 9988, title: 'Document the line-length option for notebooks', lang: 'Rust', level: 'Beginner', mins: 30, fit: 58, avail: 'likely', health: 95, resp: '0.6 days', merged: 31,
+    why: ['A claim 16 days ago with no activity since', 'Docs-only change', 'Very fast reviews'],
+    todo: ['Find the option reference', 'Add a note about notebooks', 'Build the docs locally'],
+    hints: ['Option docs are generated from comments in the source.', 'Edit the comment, not the generated page.', 'Run the docs build to confirm the note shows up.'] }
+];
+
+const PRACTICE = [
+  { id: 'p1', title: 'Fix an off-by-one in a pagination helper', lang: 'Python', xp: 10, mins: 15, level: 'Beginner' },
+  { id: 'p2', title: 'Add a missing alt text check to a form component', lang: 'React', xp: 10, mins: 20, level: 'Beginner' },
+  { id: 'p3', title: 'Make a retry helper stop after the limit', lang: 'Java', xp: 10, mins: 25, level: 'Beginner' },
+  { id: 'p4', title: 'Write a failing test for a date parser, then fix it', lang: 'Python', xp: 10, mins: 30, level: 'Intermediate' }
+];
+
+const BOARD = [
+  ['Aarav S.', 'Python', 1612, 14], ['Priya N.', 'React', 1544, 12], ['Diego R.', 'Java', 1490, 11], ['Muskan', 'Python', 1428, 8],
+  ['Lena K.', 'Rust', 1390, 9], ['Tomás B.', 'Go', 1342, 7], ['Hana O.', 'Python', 1301, 7], ['Ivan P.', 'TypeScript', 1288, 6]
+];
+
+const BADGES = [
+  ['First merge', 'Your first accepted pull request', true], ['Three repos', 'Merged in three different projects', true], ['Docs hero', 'Five merged documentation pull requests', true],
+  ['Test writer', 'Merged a pull request that adds tests', true], ['Bug fixer', 'Merged three bug fixes', false], ['Back again', 'Merged twice in the same repo', false]
+];
+
+const state = {
+  view: 'intro', signedIn: false, want: {}, ghOk: true, hideBanner: false, publicProfile: true, after: null, pickLang: 'Python', pickLevel: 'Beginner', trendTab: 'welcoming', issueId: null, hints: 0, ws: 0, filter: { q: '', level: 'all', lang: 'all' },
+  prs: [
+    { repo: 'encode/httpx', title: 'Clarify timeout docs', status: 'merged', note: 'Merged 6 days ago, +50 XP' },
+    { repo: 'pallets/flask', title: 'Add example for blueprint url_prefix', status: 'review', note: 'Waiting for a first review for 3 days' },
+    { repo: 'vitejs/vite', title: 'Fix broken link in the plugin guide', status: 'changes', note: 'A maintainer asked for one change' }
+  ],
+  done: {}, xp: 920, picked: false
+};
+let tick = null, timerSec = 47 * 3600 + 21 * 60 + 12;
+const feed = { pickId: 1, skipped: [], order: [...ISSUES].sort((a, b) => b.fit - a.fit).map((i) => i.id), shuffled: false, hidden: [], fresh: [], updated: Date.now() - 12 * 60000, refreshing: false, cooldownUntil: 0, note: '', alsoOffset: 0 };
+const COOLDOWN = 60000; // demo only; the real app allows one refresh every 5 minutes
+function ago(ms) { const m = Math.floor((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m === 1 ? '1 minute ago' : `${m} minutes ago`; }
+function refreshLabel() {
+  if (feed.refreshing) return '<span class="spin" aria-hidden="true"></span>Checking GitHub';
+  const left = Math.ceil((feed.cooldownUntil - Date.now()) / 1000);
+  return left > 0 ? `Refresh again in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Refresh';
+}
+function nextPick() {
+  const ranked = [...ISSUES].filter((i) => !feed.hidden.includes(i.id)).sort((a, b) => b.fit - a.fit);
+  feed.skipped.push(feed.pickId);
+  let next = ranked.find((i) => !feed.skipped.includes(i.id));
+  if (!next) { feed.skipped = [feed.pickId]; next = ranked.find((i) => i.id !== feed.pickId) || ranked[0]; }
+  feed.pickId = next.id; timerSec = 48 * 3600; state.picked = false;
+  return next;
+}
+function doRefresh() {
+  if (feed.refreshing || Date.now() < feed.cooldownUntil) return;
+  feed.refreshing = true; updateRefreshUi();
+  setTimeout(() => {
+    const pool = ISSUES.filter((i) => i.id !== feed.pickId && !feed.hidden.includes(i.id));
+    const gone = pool[Math.floor(Math.random() * pool.length)];
+    if (gone) feed.hidden.push(gone.id);
+    const left = ISSUES.filter((i) => !feed.hidden.includes(i.id) && i.id !== feed.pickId);
+    feed.fresh = left.sort(() => Math.random() - 0.5).slice(0, 2).map((i) => i.id);
+    feed.refreshing = false; feed.updated = Date.now(); feed.cooldownUntil = Date.now() + COOLDOWN;
+    feed.note = `Up to date. 2 issues have new activity${gone ? `, and ${gone.repo} #${gone.num} was claimed on GitHub, so it is gone from your list` : ''}.`;
+    if (state.view === 'explore') { $('#list').innerHTML = listHtml(); $('#feed-note').textContent = feed.note; }
+    updateRefreshUi(); toast('Issues refreshed');
+  }, 1400);
+}
+function doShuffle() {
+  const a = [...feed.order];
+  for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; }
+  feed.order = a; feed.shuffled = true;
+}
+function updateRefreshUi() {
+  document.querySelectorAll('[data-refresh]').forEach((b) => { b.innerHTML = refreshLabel(); b.disabled = feed.refreshing || Date.now() < feed.cooldownUntil; });
+  document.querySelectorAll('[data-upd]').forEach((el) => { el.textContent = `Updated ${ago(feed.updated)}`; });
+}
+
+
+// Activity calendar: a day is green after 15 active minutes or one real action.
+const DAY = 864e5;
+const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const TODAY = new Date(); TODAY.setHours(0, 0, 0, 0);
+const ACT = (() => {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const rows = [];
+  for (let back = 370; back >= 1; back--) {
+    const d = new Date(TODAY.getTime() - back * DAY);
+    let mins = 0, actions = 0, merged = false;
+    if (back <= 8) { mins = 20 + Math.floor(rnd() * 70); actions = rnd() > 0.5 ? 1 : 0; }
+    else if (back === 9) { mins = 4; }
+    else { const r = rnd(); if (r > 0.42) mins = 15 + Math.floor(rnd() * 100); else if (r > 0.3) mins = Math.floor(rnd() * 14); if (rnd() > 0.85) actions = 1; }
+    if (back === 6 || back === 41 || back === 77 || back === 130 || back === 190 || back === 240 || back === 300 || back === 333) merged = true;
+    rows.push({ day: isoDay(d), mins, actions, merged });
+  }
+  rows.push({ day: isoDay(TODAY), mins: 11, actions: 0, merged: false, today: true });
+  return rows;
+})();
+const level = (r) => r.merged ? 4 : r.mins >= 60 ? 3 : r.mins >= 30 ? 2 : (r.mins >= 15 || r.actions > 0) ? 1 : 0;
+const todayRow = () => ACT.at(-1);
+function streak() {
+  let n = 0, k = ACT.length - 1;
+  if (level(ACT[k]) === 0) k -= 1;
+  while (k >= 0 && level(ACT[k]) > 0) { n++; k--; }
+  return n;
+}
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function tipFor(r) {
+  const what = [r.mins ? `${r.mins} active minutes` : 'No activity'];
+  if (r.actions) what.push('practice task or push');
+  if (r.merged) what.push('pull request merged');
+  return `${r.day}: ${what.join(', ')}`;
+}
+function calendarHtml(weeks, big) {
+  const days = ACT.slice(-(weeks * 7 - (6 - TODAY.getDay())));
+  const pad = new Date(days[0].day + 'T00:00:00').getDay();
+  const cells = Array.from({ length: pad }, () => '<i class="pad"></i>').join('') +
+    days.map((r) => `<i class="l${level(r)} ${r.today ? 'today' : ''}" title="${tipFor(r)}" aria-label="${tipFor(r)}"></i>`).join('');
+  const t = todayRow(), left = Math.max(0, 15 - t.mins);
+  const note = level(t) ? `Today is green: ${t.mins} active minutes.` : `Today: ${t.mins} active minutes. ${left} more and today turns green.`;
+  return `<div class="cal-wrap"><div class="cal ${big ? 'big' : ''}" role="img" aria-label="Activity over the last ${weeks} weeks">${cells}</div></div>
+    <div class="legend">Less <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> More<span style="margin-left:10px">Darkest with a dot: a pull request merged</span></div>
+    <p class="today-note" id="today-note">${note}</p>`;
+}
+function refreshCalendars() {
+  document.querySelectorAll('[data-cal]').forEach((el) => { el.innerHTML = calendarHtml(Number(el.dataset.cal), el.dataset.big === '1'); });
+  const st = document.getElementById('streak-num'); if (st) st.textContent = `${streak()} days`;
+}
+// Count an active minute only while the tab is visible and the user did something in the last 2 minutes.
+let lastInput = Date.now();
+['mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach((ev) => window.addEventListener(ev, () => { lastInput = Date.now(); }, { passive: true }));
+setInterval(() => {
+  if (document.visibilityState === 'visible' && Date.now() - lastInput < 120000) {
+    const t = todayRow(), was = level(t); t.mins += 1; refreshCalendars();
+    if (!was && level(t)) toast('Today is green. Streak: ' + streak() + ' days');
+  }
+}, 60000);
+
+const $ = (s) => document.querySelector(s);
+const issue = (id) => ISSUES.find((i) => i.id === id);
+const lvlClass = (l) => ({ Beginner: 'b', Intermediate: 'i', Advanced: 'a' }[l]);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+const PUBLIC = ['intro', 'trending'];
+function go(view, id) {
+  if (!state.signedIn && !PUBLIC.includes(view)) { openSheet(view === 'issue' ? id : null); return; }
+  state.view = view; state.issueId = id || null;
+  if (view === 'issue') { state.hints = 0; state.ws = 0; }
+  render(); window.scrollTo(0, 0);
+}
+
+function renderNav() {
+  const cur = state.view === 'issue' ? 'explore' : state.view;
+  const items = state.signedIn ? [...NAV.slice(0, 2), ['trending', 'Trending'], ...NAV.slice(2)] : [['intro', 'What you get'], ['trending', 'Trending']];
+  $('#rail-signin').hidden = state.signedIn; $('#rail-me').hidden = !state.signedIn;
+  $('#me-warn').hidden = state.ghOk;
+  if (state.view === 'profile') $('#rail-me').setAttribute('aria-current', 'page'); else $('#rail-me').removeAttribute('aria-current');
+  $('#nav').innerHTML = items.map(([k, n]) => `<button data-go="${k}" ${k === cur ? 'aria-current="page"' : ''}>${svg(k)}${n}${SOON_NAV.includes(k) ? '<span class="soon">Soon</span>' : ''}</button>`).join('');
+}
+
+function fitRing(p) { return `<div class="fit" style="--p:${p}" role="img" aria-label="${p} percent fit"><i>${p}%</i></div>`; }
+function chips(i) {
+  return `<span class="chip ${lvlClass(i.level)}">${i.level}</span><span class="chip">${i.lang}</span><span class="chip">about ${i.mins} min</span>` +
+    `<span class="chip ${i.avail === 'free' ? 'free' : 'likely'}">${i.avail === 'free' ? 'Free' : 'Likely free'}</span>`;
+}
+
+function fmtTimer(s) {
+  const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor(s % 3600 / 60)).padStart(2, '0'), x = String(s % 60).padStart(2, '0');
+  return `${h}:${m}:${x}`;
+}
+
+function viewHome() {
+  const i = issue(feed.pickId);
+  const also = ISSUES.filter((x) => x.id !== i.id && !feed.hidden.includes(x.id));
+  const alsoShown = [0, 1, 2].map((k) => also[(feed.alsoOffset + k) % also.length]).filter((x, k, arr) => x && arr.indexOf(x) === k);
+  const open = state.prs.filter((p) => p.status !== 'merged');
+  return `
+  <div class="top">
+    <div><h1>Good morning, Muskan</h1><p class="sub">One issue picked for you today. It stays reserved while you work.</p></div>
+    <div class="stats">
+      <div class="stat streak"><b class="num" id="streak-num">${streak()} days</b><span>Streak</span></div>
+      <div class="stat"><b class="num">${state.xp}</b><span>XP</span></div>
+      <div class="stat"><b class="num">Level 4</b><span>Intermediate</span></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="col">
+      <section class="next" aria-labelledby="nx">
+        <div class="head"><span class="label" id="nx">Your next contribution</span><span class="timer">Reserved for you <span id="timer">${fmtTimer(timerSec)}</span></span></div>
+        <div class="row" style="align-items:flex-start;flex-wrap:nowrap;gap:16px">
+          <div style="flex:1;min-width:0"><div class="mono" style="color:var(--ink-2);font-size:12.5px">${i.repo} #${i.num}</div><h2>${esc(i.title)}</h2></div>
+          ${fitRing(i.fit)}
+        </div>
+        <div class="meta">${chips(i)}</div>
+        <div><div class="label" style="margin-bottom:6px">Why we picked this</div>
+          <ul class="checks">${i.why.slice(0, 4).map((w) => `<li>${TICK}<span>${esc(w)}</span></li>`).join('')}</ul></div>
+        <div class="row"><button class="btn primary" data-issue="${i.id}" data-pick>Start working</button><button class="btn" data-issue="${i.id}" data-pick>Read the issue first</button><button class="btn" data-another>Show me another</button></div>
+        ${soonMini('ranking')}
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Also a good fit</h2><div class="row"><button class="btn small" data-shuffle-home>Shuffle</button><button class="btn small" data-go="explore">See all</button></div></div>
+        <div class="list">${alsoShown.map(rowIssue).join('')}</div>
+      </section>
+    </div>
+    <div class="col">
+      <section class="panel">
+        <h2>Your activity</h2>
+        <div data-cal="17">${calendarHtml(17, false)}</div>
+      </section>
+      <section class="panel">
+        <h2>Your pull requests</h2>
+        <div class="list">${state.prs.map(rowPr).join('')}</div>
+        <p class="sub" style="margin-top:10px">${open.length} open. Waiting on you: ${state.prs.filter((p) => p.status === 'changes').length}.</p>
+      </section>
+      <section class="panel">
+        <h2>Path: Python contributor</h2>
+        <div class="bar" role="img" aria-label="40 percent"><i style="width:40%"></i></div>
+        <ul class="steps" style="margin-top:12px">
+          <li class="done"><span class="dot">${TICK}</span>Git basics</li>
+          <li class="done"><span class="dot">${TICK}</span>First documentation pull request</li>
+          <li class="done"><span class="dot">${TICK}</span>First test pull request</li>
+          <li class="now"><span class="dot"></span>Current: a bug fix in an async library</li>
+        </ul>
+      </section>
+    </div>
+  </div>`;
+}
+
+function rowIssue(i) {
+  return `<button class="item" data-issue="${i.id}"><div style="min-width:0"><div class="t">${esc(i.title)}</div>
+    <div class="meta" style="margin-top:5px"><span class="mono" style="font-size:12px;color:var(--ink-2)">${i.repo}</span>${chips(i)}${feed.fresh.includes(i.id) ? '<span class="chip new">New activity</span>' : ''}</div></div>${fitRing(i.fit)}</button>`;
+}
+function rowPr(p) {
+  const tag = { merged: ['b', 'Merged'], review: ['i', 'Review requested'], changes: ['a', 'Needs you'] }[p.status];
+  return `<div class="item" style="cursor:default"><div style="min-width:0"><div class="t">${esc(p.title)}</div><div class="r" style="font-family:var(--f-body)">${esc(p.repo)}. ${esc(p.note)}</div></div><span class="chip ${tag[0]}">${tag[1]}</span></div>`;
+}
+
+function filtered() {
+  const f = state.filter, q = f.q.trim().toLowerCase();
+  return feed.order.map(issue).filter((i) => !feed.hidden.includes(i.id)).filter((i) => (f.level === 'all' || i.level === f.level) && (f.lang === 'all' || i.lang === f.lang) &&
+    (!q || (i.title + ' ' + i.repo).toLowerCase().includes(q)));
+}
+function listHtml() {
+  const r = filtered();
+  return r.length ? r.map(rowIssue).join('') : '<p class="sub" style="padding:14px 4px">No issues match. Clear a filter to see more.</p>';
+}
+function viewExplore() {
+  const langs = [...new Set(ISSUES.map((i) => i.lang))];
+  return `
+  <div class="top"><div><h1>Explore</h1><p class="sub">Free issues across the repos you watch, ranked for you.</p></div></div>
+  <div class="filters">
+    <input id="q" type="search" placeholder="Search issues or repos" aria-label="Search" value="${esc(state.filter.q)}">
+    <select id="lvl" aria-label="Level"><option value="all">Any level</option>${['Beginner', 'Intermediate', 'Advanced'].map((l) => `<option ${state.filter.level === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <select id="lng" aria-label="Language"><option value="all">Any language</option>${langs.map((l) => `<option ${state.filter.lang === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
+  </div>
+  <div class="toolbar"><span class="upd" data-upd>Updated ${ago(feed.updated)}</span>
+    <button class="btn small" data-shuffle>${feed.shuffled ? 'Shuffle again' : 'Shuffle'}</button>${feed.shuffled ? '<button class="btn small" data-bestfit>Sort by best fit</button>' : ''}
+    <button class="btn small primary" data-refresh ${feed.refreshing || Date.now() < feed.cooldownUntil ? 'disabled' : ''}>${refreshLabel()}</button></div>
+  <p class="sub" id="feed-note" style="font-size:12.5px;margin:-4px 0 10px">${feed.note || 'Refresh checks GitHub for new issues and claims on the repos you watch.'}</p>
+  <section class="panel"><div class="list" id="list">${listHtml()}</div></section>`;
+}
+
+function viewIssue() {
+  const i = issue(state.issueId);
+  const reserved = state.picked;
+  return `
+  <button class="back" data-go="explore">Back to Explore</button>
+  <div class="top"><div><div class="mono" style="color:var(--ink-2)">${i.repo} #${i.num}</div><h1>${esc(i.title)}</h1><div class="meta" style="margin-top:10px">${chips(i)}</div></div>${fitRing(i.fit)}</div>
+  <div class="grid">
+    <div class="col">
+      <section class="panel"><h2>Why this is free</h2><ul class="checks" style="grid-template-columns:1fr">${i.why.map((w) => `<li>${TICK}<span>${esc(w)}</span></li>`).join('')}</ul></section>
+      <section class="panel"><h2>What to do</h2><ol style="margin:0;padding-left:20px;display:grid;gap:6px">${i.todo.map((t) => `<li>${esc(t)}</li>`).join('')}</ol></section>
+      <section class="panel" id="mentor">${mentorHead()}${mentorHtml(i)}</section>
+    </div>
+    <div class="col">
+      <section class="panel"><h2>Repository health</h2>
+        <div class="skill" style="grid-template-columns:110px 1fr 34px"><span>Health</span><div class="bar"><i style="width:${i.health}%"></i></div><b class="num">${i.health}</b></div>
+        <div class="skill" style="grid-template-columns:110px 1fr 34px"><span>Replies in</span><span></span><b class="num">${i.resp}</b></div>
+        <div class="skill" style="grid-template-columns:110px 1fr 34px"><span>Recent merges</span><span></span><b class="num">${i.merged}</b></div>
+      </section>
+      <section class="panel" id="work"><h2>Workspace</h2>${workHtml(i)}</section>
+    </div>
+  </div>`;
+}
+function mentorHtml(i) {
+  const shown = i.hints.slice(0, state.hints).map((h, n) => `<div class="hint"><b>Hint ${n + 1}</b><p>${esc(h)}</p></div>`).join('');
+  const more = state.hints < i.hints.length ? `<div style="margin-top:12px"><button class="btn small" data-hint>${state.hints ? 'Another hint' : 'Give me a hint'}</button></div>` : '<p class="sub" style="margin-top:10px">That is every hint. You have what you need.</p>';
+  return shown + more;
+}
+function workHtml(i) {
+  const st = state.ws;
+  const names = ['Checking the repository', 'Creating your fork', 'Creating the branch', 'Preparing the Codespace'];
+  if (st === 0) return `<p class="sub" style="margin-bottom:12px">Forks the repo to your account and opens a Codespace. Nothing is sent to the project until you create the pull request.</p><button class="btn primary" data-start>Start working</button>${soonMini('hosted')}${soonMini('extension')}`;
+  if (st <= 4) {
+    const step = st - 1;
+    return `<ul class="steps">${names.map((n, k) => `<li class="${k < step ? 'done' : k === step ? 'now' : ''}"><span class="dot">${k < step ? TICK : ''}</span>${n}</li>`).join('')}</ul>`;
+  }
+  if (st === 5) return `<ul class="steps" style="margin-bottom:12px">${names.map((n) => `<li class="done"><span class="dot">${TICK}</span>${n}</li>`).join('')}</ul>
+    <p class="mono" style="font-size:12.5px;margin-bottom:12px">Branch: muskan/fix-${i.id}-proxy-scheme</p>
+    <div class="row"><button class="btn primary" data-open>Open workspace</button><button class="btn" data-finish>I finished my changes</button></div>`;
+  if (st === 6) return `<ul class="steps" style="margin-bottom:12px"><li class="done"><span class="dot">${TICK}</span>Changes detected: 2 files</li><li class="done"><span class="dot">${TICK}</span>Tests passed: 148 of 148</li></ul>
+    <div class="field"><label for="pt">Title</label><input id="pt" value="Raise a clear error for a proxy URL without a scheme"></div>
+    <div class="field"><label for="pb">Description</label><textarea id="pb">Fixes #${i.num}.\n\nThe proxy setting is now checked when the client is created. A value without a scheme raises an error that names the value.\n\nAdded a parametrized test for the missing scheme case.</textarea></div>
+    <button class="btn primary" data-pr>Create pull request</button>
+    <p class="sub" style="margin-top:8px">You click this. FirstPR never opens a pull request on its own.</p>`;
+  return `<ul class="steps"><li class="done"><span class="dot">${TICK}</span>Pull request created</li></ul><p class="sub" style="margin:10px 0 12px">It now shows under My PRs. XP is added once a maintainer approves or merges it.</p><button class="btn" data-go="prs">View My PRs</button>`;
+}
+
+
+const SOON = {
+  mentor: ['AI mentor', 'Hints when you are stuck. It never writes the fix for you.', 214],
+  board: ['Leaderboard and contribution rating', 'Weekly and all-time boards that count only merged and approved work.', 167],
+  weekly: ['Weekly challenges', 'One challenge a week on FirstPR practice repos, with its own board.', 98],
+  ranking: ['Smarter picks', 'Daily picks that learn from the issues people like you finish.', 141],
+  paths: ['Career paths', 'A step-by-step path to becoming a Python, React or Java contributor.', 189],
+  teams: ['Universities and teams', 'Cohorts, mentors and progress tracking for a class or a company team.', 57],
+  extension: ['FirstPR VS Code extension', 'Counts your exact coding time in the Codespace for your calendar.', 76],
+  hosted: ['FirstPR editor', 'A ready editor inside FirstPR that does not use your Codespaces hours.', 63]
+};
+const SOON_NAV = ['paths', 'board'];
+function wantBtn(key) {
+  return state.want[key] ? '<button class="btn small" disabled>You asked for this</button>' : `<button class="btn small" data-want="${key}">I want this</button>`;
+}
+function soonBar(key) {
+  const [name, desc, n] = SOON[key];
+  return `<div class="soonbar"><span class="soon">Coming soon</span><div class="txt"><b>${name}</b><span class="sub">${desc}</span></div>${wantBtn(key)}<span class="sub num" style="font-size:12px">${n + (state.want[key] ? 1 : 0)} people asked</span></div>`;
+}
+function soonMini(key) {
+  const [name] = SOON[key];
+  return `<div class="soonmini"><span class="soon">Soon</span><b>${name}</b>${wantBtn(key)}</div>`;
+}
+const mentorHead = () => `<h2>Mentor <span class="soon">Preview</span></h2>${soonBar('mentor')}<p class="sub">Try the preview below. Hints only. It will not write the fix for you.</p>`;
+
+function viewPaths() {
+  const list = [['React contributor', '12 steps'], ['Python contributor', '14 steps'], ['Java contributor', '12 steps'], ['ML contributor', '15 steps'], ['Backend contributor', '13 steps'], ['DevOps contributor', '11 steps']];
+  return `
+  <div class="top"><div><h1>Paths <span class="soon">Soon</span></h1><p class="sub">Choose what you want to become. FirstPR lines up the issues that get you there, from easy to hard.</p></div></div>
+  ${soonBar('paths')}
+  <section class="panel" style="margin-bottom:18px"><h2>Pick a path</h2><div class="paths">${list.map(([n, c]) => `<div><b>${n}</b><span class="sub">${c}</span></div>`).join('')}</div></section>
+  <section class="panel" style="margin-bottom:18px"><h2>Preview: Python contributor</h2>
+    <div class="bar" role="img" aria-label="40 percent"><i style="width:40%"></i></div>
+    <ul class="steps" style="margin-top:12px">
+      <li class="done"><span class="dot">${TICK}</span>Git basics</li><li class="done"><span class="dot">${TICK}</span>First documentation pull request</li>
+      <li class="done"><span class="dot">${TICK}</span>First test pull request</li><li class="done"><span class="dot">${TICK}</span>First bug fix</li>
+      <li class="now"><span class="dot"></span>Current: an async Python issue</li><li><span class="dot"></span>Intermediate backend issue</li><li><span class="dot"></span>Performance issue</li></ul></section>
+  ${soonBar('teams')}`;
+}
+
+function viewPractice() {
+  return `
+  <div class="top"><div><h1>Practice</h1><p class="sub">Small tasks on FirstPR's own repos. No maintainer gets a pull request from you, so this is a safe place to learn the flow.</p></div></div>
+  <section class="panel"><div class="list">${PRACTICE.map((p) => `
+    <div class="item" style="cursor:default"><div style="min-width:0"><div class="t">${esc(p.title)}</div>
+      <div class="meta" style="margin-top:5px"><span class="chip ${lvlClass(p.level)}">${p.level}</span><span class="chip">${p.lang}</span><span class="chip">about ${p.mins} min</span><span class="chip">+${p.xp} XP</span></div></div>
+      ${state.done[p.id] ? '<span class="chip b">Done</span>' : `<button class="btn small" data-practice="${p.id}">Mark done</button>`}</div>`).join('')}</div></section>
+  <section style="margin-top:18px">${soonBar('weekly')}</section>`;
+}
+
+function viewPrs() {
+  return `
+  <div class="top"><div><h1>My PRs</h1><p class="sub">What needs you, in order.</p></div></div>
+  <section class="panel"><div class="list">${state.prs.map(rowPr).join('')}</div></section>
+  <section class="panel" style="margin-top:18px"><h2>A nudge, ready to send</h2><p class="sub" style="margin-bottom:8px">The review request on pallets/flask is 3 days old. A short note is fine.</p>
+    <p class="hint" style="margin:0">Hi, I added the example you asked for in the issue. Happy to change anything. Thanks for taking a look.</p></section>`;
+}
+
+function viewProgress() {
+  const skills = [['Python', 80, 4], ['React', 60, 3], ['Java', 40, 2], ['Docs', 90, 5]];
+  return `
+  <div class="top"><div><h1>Progress</h1><p class="sub">XP and rating only come from work a maintainer accepted.</p></div>
+    <div class="stats"><div class="stat"><b class="num">1428</b><span>Contribution rating <i class="soon">Soon</i></span></div><div class="stat"><b class="num">${state.xp}</b><span>XP</span></div><div class="stat"><b class="num">8</b><span>Merged PRs</span></div></div></div>
+  <section class="panel" style="margin-bottom:18px"><h2>Activity this year</h2><p class="sub" style="margin-bottom:12px">A day turns green after 15 active minutes on FirstPR, or one real piece of work: a practice task, a push to your branch, or a pull request update. ${streak()} days in a row so far.</p>
+    <div data-cal="53" data-big="1">${calendarHtml(53, true)}</div></section>
+  <div class="grid">
+    <div class="col">
+      <section class="panel"><h2>Badges</h2><div class="badges">${BADGES.map(([n, d, got]) => `<div class="badge ${got ? '' : 'locked'}"><b>${n}</b><span>${d}</span><span class="chip ${got ? 'b' : ''}" style="justify-self:start">${got ? 'Earned' : 'Locked'}</span></div>`).join('')}</div></section>
+      <section class="panel"><h2>How XP is earned</h2><div class="tw"><table><thead><tr><th>Event</th><th>XP</th></tr></thead><tbody>
+        <tr><td>Practice task done</td><td class="num">10</td></tr><tr><td>Pull request approved</td><td class="num">20</td></tr>
+        <tr><td>Beginner issue merged</td><td class="num">50</td></tr><tr><td>Intermediate issue merged</td><td class="num">100</td></tr>
+        <tr><td>Advanced issue merged</td><td class="num">200</td></tr><tr><td>First merge in a new repo</td><td class="num">+25</td></tr></tbody></table></div></section>
+    </div>
+    <div class="col">
+      <section class="panel"><h2>Skills</h2>${skills.map(([n, p, l]) => `<div class="skill"><span>${n}</span><div class="bar" role="img" aria-label="${n} ${l} of 5"><i style="width:${p}%"></i></div><b class="num">${l}/5</b></div>`).join('')}</section>
+      <section class="panel"><h2>Next unlock</h2><p>Advanced issues open at level 5. You need 180 more XP, about one intermediate merge.</p></section>
+    </div>
+  </div>`;
+}
+
+function viewBoard() {
+  return `
+  <div class="top"><div><h1>Leaderboard <span class="soon">Soon</span></h1><p class="sub">Preview with sample names. Only merged or approved work will count.</p></div></div>
+  ${soonBar('board')}
+  <section class="panel"><div class="tw"><table><thead><tr><th>#</th><th>Name</th><th>Main language</th><th>Rating</th><th>Merged</th></tr></thead><tbody>
+    ${BOARD.map((r, n) => `<tr class="${r[0] === 'Muskan' ? 'me-row' : ''}"><td class="num">${n + 1}</td><td>${r[0]}</td><td>${r[1]}</td><td class="num">${r[2]}</td><td class="num">${r[3]}</td></tr>`).join('')}
+  </tbody></table></div></section>`;
+}
+
+
+const TREND = {
+  welcoming: { label: 'Welcoming this week', note: 'Repos that merged the most pull requests from first-time contributors in the last 7 days.', rows: [
+    ['pallets/flask', 'Python', '23 first-timer PRs merged', 3], ['vitejs/vite', 'TypeScript', '19 first-timer PRs merged', 2], ['encode/httpx', 'Python', '14 first-timer PRs merged', 1],
+    ['spring-projects/spring-boot', 'Java', '12 first-timer PRs merged', 4], ['astral-sh/ruff', 'Rust', '11 first-timer PRs merged', 7], ['facebook/react', 'JavaScript', '9 first-timer PRs merged', 5]] },
+  fresh: { label: 'Fresh issues', note: 'Free beginner and intermediate issues opened in the last 24 hours.', rows: [
+    ['vitejs/vite', 'TypeScript', 'Docs: explain the base option for nested deploys, 3 hours ago', 2], ['pallets/click', 'Python', 'Show the default value in help for flag options, 5 hours ago', 3],
+    ['encode/httpx', 'Python', 'Clear error when a proxy URL has no scheme, 9 hours ago', 1], ['spring-projects/spring-boot', 'Java', 'Fix typo in the actuator endpoint reference, 14 hours ago', 4]] },
+  fastest: { label: 'Fastest maintainers', note: 'Shortest median time to a first review on outside pull requests this month.', rows: [
+    ['astral-sh/ruff', 'Rust', 'First review in 6 hours', 7], ['vitejs/vite', 'TypeScript', 'First review in 9 hours', 2], ['pytest-dev/pytest', 'Python', 'First review in 1 day', 6], ['encode/httpx', 'Python', 'First review in 1.2 days', 1]] },
+  rising: { label: 'Rising repos', note: 'Catalogue repos gaining the most stars this week.', rows: [
+    ['astral-sh/ruff', 'Rust', '+1,840 stars this week', 7], ['pydantic/pydantic-ai', 'Python', '+1,310 stars this week', 1], ['vitejs/vite', 'TypeScript', '+920 stars this week', 2], ['modelcontextprotocol/python-sdk', 'Python', '+870 stars this week', 3]] }
+};
+
+function pickResults() {
+  let found = ISSUES.filter((i) => i.lang === state.pickLang && i.level === state.pickLevel);
+  if (found.length < 3) found = found.concat(ISSUES.filter((i) => i.lang === state.pickLang && !found.includes(i)));
+  if (found.length < 3) found = found.concat(ISSUES.filter((i) => i.level === state.pickLevel && !found.includes(i)));
+  found = found.slice(0, 3);
+  const card = (i) => `<div class="pcard"><div class="mono" style="font-size:12px;color:var(--ink-2)">${i.repo} #${i.num}</div><div class="t">${esc(i.title)}</div><div class="meta">${chips(i)}</div><div class="why">${esc(i.why[0])}</div><button class="btn small" data-try="${i.id}" style="justify-self:start">Start this issue</button></div>`;
+  return found.map(card).join('') + `<div class="pcard locked"><div class="blur"><div class="t">Your daily pick, matched to your skills</div><div class="meta"><span class="chip">${state.pickLang}</span><span class="chip">${state.pickLevel}</span></div><div>Reserved for you for 48 hours. Nobody else gets sent to it.</div></div><div class="over"><b>Your daily pick is waiting</b><span class="sub">Sign in to reserve it for 48 hours.</span><button class="btn primary small" data-signin>Sign in with GitHub</button></div></div>`;
+}
+
+function viewIntro() {
+  const langs = [...new Set(ISSUES.map((i) => i.lang))];
+  return `
+  <section class="hero">
+    <span class="live">Live from the catalogue</span>
+    <h1>Your first merged pull request, <em>picked for you today.</em></h1>
+    <p class="lead">FirstPR finds open-source issues nobody has claimed, at your level and in your stack, holds one for you for 48 hours, opens a ready workspace and stays with you until a maintainer merges it.</p>
+    <div class="row"><button class="btn primary big" data-signin>Sign in with GitHub</button><button class="btn big" data-go="trending">See what is trending</button></div>
+    <div class="counters num"><div><b>1,284</b><span>free issues right now</span></div><div><b>512</b><span>repos checked every 30 minutes</span></div><div><b>87</b><span>PRs merged through FirstPR this week</span></div><div><b>1.4 days</b><span>median time to a first review</span></div></div>
+  </section>
+
+  <section class="section">
+    <h2>Pick your stack. See your issues.</h2>
+    <p class="sub">Two questions, no sign-in. These are real, unclaimed issues that match.</p>
+    <div class="filters" style="margin:0">
+      <select id="pick-lang" aria-label="Language">${langs.map((l) => `<option ${l === state.pickLang ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <select id="pick-lvl" aria-label="Level">${['Beginner', 'Intermediate', 'Advanced'].map((l) => `<option ${l === state.pickLevel ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    </div>
+    <div class="pick-grid" id="pick-results">${pickResults()}</div>
+  </section>
+
+  <section class="section">
+    <h2>What you get after signing in</h2>
+    <div class="tiles">
+      <div class="tile"><b>A daily pick held for you</b><span>One issue a day, matched to your skills, reserved for 48 hours so you are never racing someone else.</span></div>
+      <div class="tile"><b>A workspace in one click</b><span>Fork, branch and a VS Code workspace in the browser, ready in about a minute. Nothing to install.</span></div>
+      <div class="tile"><b>A mentor that gives hints</b><span>Stuck? Ask. You get the next step, never the full answer, so the work stays yours.</span></div>
+      <div class="tile"><b>A PR tracker that tells you what to do</b><span>Changes requested, waiting too long, merged: always the one next action, with a polite nudge drafted.</span></div>
+      <div class="tile"><b>A calendar that turns green</b><span>15 focused minutes lights up the day. Build a streak you can see.</span></div>
+      <div class="tile"><b>XP only for merged work</b><span>Badges, levels and a weekly leaderboard that count accepted pull requests, not noise.</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Merged this week</h2>
+    <div class="panel" style="padding:6px 18px"><div class="list">
+      <div class="item" style="cursor:default"><div><div class="t">Clarify timeout docs</div><div class="r">encode/httpx, by a first-time contributor, 2 days ago</div></div><span class="chip b">Merged</span></div>
+      <div class="item" style="cursor:default"><div><div class="t">Add example for blueprint url_prefix</div><div class="r">pallets/flask, 3 days ago</div></div><span class="chip b">Merged</span></div>
+      <div class="item" style="cursor:default"><div><div class="t">Fix broken link in the plugin guide</div><div class="r">vitejs/vite, 4 days ago</div></div><span class="chip b">Merged</span></div>
+    </div></div>
+  </section>
+
+  <section class="section">
+    <h2>Questions</h2>
+    <div>
+      <details><summary>Is it free?</summary><p>Yes. The workspace runs on your own GitHub Codespaces allowance, which includes free hours every month.</p></details>
+      <details><summary>What does it ask for on GitHub?</summary><p>Your public profile to sign in. Permission to fork and open a workspace is asked for only the first time you click Start working.</p></details>
+      <details><summary>Will it open pull requests for me?</summary><p>No. You write the change and you click Create pull request. FirstPR never posts anything on your behalf.</p></details>
+      <details><summary>Is this fair to maintainers?</summary><p>New contributors can have at most 3 open pull requests on repos new to them, do a practice task first, and any repo can opt out with one file.</p></details>
+    </div>
+  </section>
+
+  <section class="final">
+    <h2>Your pick for today is ready.</h2>
+    <p>Sign in to see it and reserve it before someone else claims the issue on GitHub.</p>
+    <button class="btn big" data-signin>Sign in with GitHub</button>
+  </section>`;
+}
+
+function viewTrending() {
+  const tab = TREND[state.trendTab];
+  return `
+  <div class="top"><div><h1>Trending for contributors</h1><p class="sub">Not just popular. Where your pull request is most likely to be welcomed and merged.</p></div></div>
+  <div class="tabs" role="tablist">${Object.entries(TREND).map(([k, v]) => `<button role="tab" data-tab="${k}" aria-selected="${k === state.trendTab}">${v.label}</button>`).join('')}</div>
+  <p class="sub" style="margin-bottom:10px">${tab.note}</p>
+  <section class="panel"><div class="list">${tab.rows.map((r, n) => `
+    <div class="item" style="cursor:default"><div style="min-width:0"><div class="t"><span class="rank">${n + 1}</span> ${esc(r[0])}</div>
+      <div class="meta" style="margin-top:5px"><span class="chip">${r[1]}</span><span class="r" style="font-family:var(--f-body)">${esc(r[2])}</span></div></div>
+      <button class="btn small" data-try="${r[3]}">Start</button></div>`).join('')}</div></section>
+  ${state.signedIn ? '' : '<p class="sub" style="margin-top:12px">Start opens a ready workspace on a free issue in that repo. Sign in with GitHub to use it.</p>'}`;
+}
+
+function openSheet(after, reconnect) {
+  state.after = after || null; state.reconnecting = !!reconnect;
+  const i = after ? issue(Number(after)) : null;
+  $('#sheet').innerHTML = `<div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheet-t">
+    <h2 id="sheet-t">${reconnect ? 'Reconnect GitHub' : i ? 'Sign in to start this issue' : 'Sign in to FirstPR'}</h2>
+    ${i ? `<p class="mono" style="font-size:12.5px;color:var(--ink-2)">${i.repo} #${i.num}: ${esc(i.title)}</p>` : ''}
+    <ul><li>Your daily pick, held for 48 hours</li><li>A ready workspace in one click</li><li>Mentor hints, PR tracking, XP and streaks</li></ul>
+    <p class="sub" style="font-size:12.5px">FirstPR reads your public GitHub profile. It never posts anything for you.</p>
+    <div class="row"><button class="btn primary" data-gh>Continue with GitHub</button><button class="btn" data-close>Not now</button></div></div>`;
+  $('#sheet').hidden = false; $('#sheet [data-gh]').focus();
+}
+function closeSheet() { $('#sheet').hidden = true; }
+
+
+function reconnectBanner() {
+  if (!state.signedIn || state.ghOk || state.hideBanner || PUBLIC.includes(state.view)) return '';
+  return `<div class="reconnect" role="alert">
+    <div class="txt"><b>Reconnect your GitHub account</b>
+      <p class="sub">FirstPR lost access to GitHub on Oct 3, so your pull requests and personal repos stopped updating. Your XP, streak and calendar are safe. Reconnecting takes one click.</p></div>
+    <div class="row"><button class="btn primary" data-reconnect>Reconnect GitHub</button><button class="btn" data-later>Later</button></div></div>`;
+}
+
+function viewProfile() {
+  const merged = state.prs.filter((p) => p.status === 'merged');
+  const skills = [['Python', 80, 4], ['React', 60, 3], ['Java', 40, 2], ['Docs', 90, 5]];
+  return `
+  <section class="panel prof-head" style="margin-bottom:18px">
+    <div class="avatar xl">M</div>
+    <div style="flex:1;min-width:0">
+      <h1 style="font-size:clamp(24px,3.4vw,32px)">Muskan</h1>
+      <p class="sub mono">@MuskanScripts · Intermediate · Level 4</p>
+      <div class="meta" style="margin-top:8px"><span class="chip b">First merge</span><span class="chip b">Three repos</span><span class="chip b">Docs hero</span><span class="chip b">Test writer</span></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b class="num">1428</b><span>Rating</span></div>
+      <div class="stat"><b class="num">${state.xp}</b><span>XP</span></div>
+      <div class="stat streak"><b class="num">${streak()} days</b><span>Streak</span></div>
+      <div class="stat"><b class="num">8</b><span>Merged</span></div>
+    </div>
+  </section>
+  <section class="panel" style="margin-bottom:18px"><h2>Activity this year</h2><div data-cal="53" data-big="1">${calendarHtml(53, true)}</div></section>
+  <div class="grid">
+    <div class="col">
+      <section class="panel"><h2>Merged pull requests</h2><div class="list">${merged.map(rowPr).join('')}
+        <div class="item" style="cursor:default"><div><div class="t">Fix typo in the CLI help</div><div class="r" style="font-family:var(--f-body)">pallets/click. Merged 3 weeks ago, +50 XP</div></div><span class="chip b">Merged</span></div>
+        <div class="item" style="cursor:default"><div><div class="t">Add test for empty proxy list</div><div class="r" style="font-family:var(--f-body)">encode/httpx. Merged 5 weeks ago, +100 XP</div></div><span class="chip b">Merged</span></div></div></section>
+      <section class="panel"><h2>Skills</h2>${skills.map(([n, p, l]) => `<div class="skill"><span>${n}</span><div class="bar" role="img" aria-label="${n} ${l} of 5"><i style="width:${p}%"></i></div><b class="num">${l}/5</b></div>`).join('')}</section>
+    </div>
+    <div class="col">
+      <section class="panel"><h2>Connected GitHub account</h2>
+        <dl class="kv">
+          <dt>Account</dt><dd class="mono">@MuskanScripts</dd>
+          <dt>Status</dt><dd>${state.ghOk ? '<span class="status ok">Connected</span>' : '<span class="status bad">Reconnect needed</span>'}</dd>
+          <dt>Last sync</dt><dd>${state.ghOk ? '4 minutes ago' : 'Oct 3, 21:40'}</dd>
+          <dt>Access</dt><dd>Read your profile and PRs. Fork and workspace after your first Start working.</dd>
+        </dl>
+        <div class="row" style="margin-top:14px">${state.ghOk ? '<button class="btn small" data-break>Simulate lost access</button>' : '<button class="btn primary small" data-reconnect>Reconnect GitHub</button>'}</div>
+        <p class="sub" style="font-size:12px;margin-top:8px">${state.ghOk ? 'Demo only: shows what happens when GitHub access expires or is revoked.' : 'Your XP, streak and calendar are kept while you reconnect.'}</p>
+      </section>
+      <section class="panel"><h2>Public profile</h2>
+        <p class="sub" style="margin-bottom:10px">Anyone with the link sees your merged PRs, badges and calendar.</p>
+        <p class="mono" style="font-size:12.5px;margin-bottom:12px">firstpr.dev/u/MuskanScripts</p>
+        <div class="row"><button class="btn small" data-copy>Copy link</button><button class="btn small" data-public>${state.publicProfile ? 'Make private' : 'Make public'}</button><span class="chip ${state.publicProfile ? 'b' : ''}">${state.publicProfile ? 'Public' : 'Private'}</span></div>
+      </section>
+      <section>${soonBar('teams')}</section>
+      <section class="panel"><h2>Account</h2>
+        <div class="row"><button class="btn small" data-go="progress">Progress details</button><button class="btn small" data-signout>Sign out</button></div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function render() {
+  renderNav();
+  const v = state.view;
+  $('#main').innerHTML = '<div class="banner">This is a preview with sample data. Nothing here talks to GitHub.</div>' + reconnectBanner() +
+    ({ intro: viewIntro, trending: viewTrending, home: viewHome, explore: viewExplore, issue: viewIssue, practice: viewPractice, prs: viewPrs, progress: viewProgress, board: viewBoard, profile: viewProfile, paths: viewPaths }[v])();
+}
+
+function advance() {
+  clearTimeout(tick);
+  if (state.ws >= 1 && state.ws <= 4) {
+    tick = setTimeout(() => { state.ws += 1; if (state.view === 'issue') { $('#work').innerHTML = '<h2>Workspace</h2>' + workHtml(issue(state.issueId)); } advance(); }, 900);
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.hasAttribute('data-signin')) return openSheet(null);
+  if (t.hasAttribute('data-close')) return closeSheet();
+  if (t.hasAttribute('data-gh') && state.reconnecting) { state.ghOk = true; state.reconnecting = false; closeSheet(); toast('GitHub reconnected. Syncing your PRs now'); render(); return; }
+  if (t.hasAttribute('data-gh')) { state.signedIn = true; closeSheet(); toast('Signed in as Muskan'); const a = state.after; state.after = null; return a ? (state.picked = Number(a) === feed.pickId, go('issue', Number(a))) : go('home'); }
+  if (t.hasAttribute('data-refresh')) { doRefresh(); return; }
+  if (t.hasAttribute('data-shuffle')) { doShuffle(); render(); toast('Shuffled'); return; }
+  if (t.hasAttribute('data-bestfit')) { feed.order = [...ISSUES].sort((a, b) => b.fit - a.fit).map((i) => i.id); feed.shuffled = false; render(); return; }
+  if (t.hasAttribute('data-shuffle-home')) { feed.alsoOffset += 3; render(); return; }
+  if (t.hasAttribute('data-another')) { const n = nextPick(); render(); toast(`New pick reserved for 48 hours: ${n.repo} #${n.num}`); return; }
+  if (t.dataset.want) { state.want[t.dataset.want] = true; toast(`Thanks. We will tell you when ${SOON[t.dataset.want][0]} is ready.`); render(); return; }
+  if (t.hasAttribute('data-break')) { state.ghOk = false; state.hideBanner = false; toast('GitHub access lost (demo)'); render(); return; }
+  if (t.hasAttribute('data-reconnect')) { openSheet(null, true); return; }
+  if (t.hasAttribute('data-later')) { state.hideBanner = true; render(); return; }
+  if (t.hasAttribute('data-public')) { state.publicProfile = !state.publicProfile; toast(state.publicProfile ? 'Profile is public' : 'Profile is private'); render(); return; }
+  if (t.hasAttribute('data-copy')) { const txt = 'https://firstpr.dev/u/MuskanScripts'; try { navigator.clipboard.writeText(txt).then(() => toast('Link copied'), () => toast(txt)); } catch (_) { toast(txt); } return; }
+  if (t.hasAttribute('data-signout')) { state.signedIn = false; toast('Signed out'); go('intro'); return; }
+  if (t.dataset.tab) { state.trendTab = t.dataset.tab; render(); return; }
+  if (t.dataset.try) { return state.signedIn ? go('issue', Number(t.dataset.try)) : openSheet(t.dataset.try); }
+  if (t.dataset.go) return go(t.dataset.go);
+  if (t.dataset.issue) { if (t.hasAttribute('data-pick')) state.picked = true; return go('issue', Number(t.dataset.issue)); }
+  if (t.hasAttribute('data-hint')) { state.hints += 1; $('#mentor').innerHTML = mentorHead() + mentorHtml(issue(state.issueId)); return; }
+  if (t.hasAttribute('data-start')) { state.ws = 1; $('#work').innerHTML = '<h2>Workspace</h2>' + workHtml(issue(state.issueId)); advance(); return; }
+  if (t.hasAttribute('data-open')) return toast('In the real app this opens your Codespace in a new tab.');
+  if (t.hasAttribute('data-finish')) { state.ws = 6; $('#work').innerHTML = '<h2>Workspace</h2>' + workHtml(issue(state.issueId)); return; }
+  if (t.hasAttribute('data-pr')) {
+    const i = issue(state.issueId), title = ($('#pt') || {}).value || i.title;
+    state.prs.unshift({ repo: i.repo, title, status: 'review', note: 'Just opened, waiting for a first review' });
+    state.ws = 7; $('#work').innerHTML = '<h2>Workspace</h2>' + workHtml(i); toast('Pull request created'); return;
+  }
+  if (t.dataset.practice) { state.done[t.dataset.practice] = true; state.xp += 10; todayRow().actions += 1; toast('+10 XP. Today counts as a green day'); render(); return; }
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'q') { state.filter.q = e.target.value; $('#list').innerHTML = listHtml(); }
+});
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'pick-lang') { state.pickLang = e.target.value; $('#pick-results').innerHTML = pickResults(); }
+  if (e.target.id === 'pick-lvl') { state.pickLevel = e.target.value; $('#pick-results').innerHTML = pickResults(); }
+  if (e.target.id === 'lvl') { state.filter.level = e.target.value; $('#list').innerHTML = listHtml(); }
+  if (e.target.id === 'lng') { state.filter.lang = e.target.value; $('#list').innerHTML = listHtml(); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+$('#sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
+setInterval(updateRefreshUi, 1000);
+setInterval(() => { timerSec = timerSec > 0 ? timerSec - 1 : 0; const el = $('#timer'); if (el) el.textContent = fmtTimer(timerSec); }, 1000);
+render();
+</script>
+</body>
+</html>
