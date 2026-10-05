@@ -36,6 +36,8 @@ packages = ["src/firstpr_api"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The fake GitHub for workspaces is shared with the platform's tests.
+pythonpath = ["../../packages/platform/tests"]
 addopts = "-ra --strict-markers"
 
 [tool.mypy]

@@ -14,9 +14,6 @@ export default function PathsPage() {
         Classes and teams working through issues together, with a shared view for the teacher or
         lead.
       </ComingSoon>
-      <ComingSoon feature="vscode-extension" title="VS Code extension">
-        Your workspace time counted exactly, straight from the editor.
-      </ComingSoon>
     </main>
   );
 }

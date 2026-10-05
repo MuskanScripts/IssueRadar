@@ -11,7 +11,17 @@ from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from firstpr_api import __version__, admin, auth, health, issues, profile, watches, webhooks
+from firstpr_api import (
+    __version__,
+    admin,
+    auth,
+    health,
+    issues,
+    profile,
+    watches,
+    webhooks,
+    workspaces,
+)
 from firstpr_api.jobs import ArqJobs
 from firstpr_api.settings import Settings
 from firstpr_platform.crypto import TokenBox
@@ -45,6 +55,7 @@ def create_app(
         app.state.checks = checks or health.default_checks(
             db_engine, cache, settings.worker_stale_after_seconds
         )
+        app.state.github_transport = github_transport
         app.state.token_box = None
         app.state.oauth = None
         if settings.sign_in_configured:
@@ -81,6 +92,7 @@ def create_app(
     v1.include_router(watches.router)
     v1.include_router(profile.router)
     v1.include_router(issues.router)
+    v1.include_router(workspaces.router)
     v1.include_router(admin.router)
     v1.include_router(webhooks.router)
     app.include_router(v1)

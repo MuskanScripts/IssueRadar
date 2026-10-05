@@ -5,6 +5,8 @@ minutes it syncs the shared catalogue with the app's token, and 15 minutes
 later it queues a personal sync for each active user with repos of their own.
 After each sync it rebuilds the issue cards the API reads, and every 15
 minutes it holds a daily pick for active users whose local day has none yet.
+Workspaces are set up when a user clicks Start working, and every 5 minutes
+their Codespaces and pull requests are checked (reads only).
 Webhooks from GitHub are handled as they arrive.
 """
 
@@ -25,10 +27,13 @@ from firstpr_platform.github_oauth import GitHubOAuth
 from firstpr_worker.catalogue import Catalogue
 from firstpr_worker.jobs import (
     cards_if_empty,
+    check_workspaces,
     handle_webhook,
     make_daily_picks,
+    poll_workspace,
     refresh_cards,
     seed_catalogue,
+    start_workspace,
     sync_active_users,
     sync_catalogue,
     sync_user,
@@ -94,12 +99,16 @@ class WorkerSettings:
         func(handle_webhook, keep_result=0, max_tries=5),
         func(refresh_cards, keep_result=0, timeout=30 * 60),
         func(make_daily_picks, keep_result=0),
+        func(start_workspace, keep_result=0, max_tries=1, timeout=10 * 60),
+        func(poll_workspace, keep_result=0, max_tries=1),
+        func(check_workspaces, keep_result=0, timeout=10 * 60),
     ]
     cron_jobs: ClassVar = [
         cron(heartbeat, second=0, run_at_startup=False),
         cron(sync_catalogue, minute={0, 30}, second=10, unique=True, keep_result=0),
         cron(sync_active_users, minute={15, 45}, second=10, unique=True, keep_result=0),
         cron(make_daily_picks, minute={5, 20, 35, 50}, second=10, unique=True, keep_result=0),
+        cron(check_workspaces, minute=set(range(2, 60, 5)), second=0, unique=True, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

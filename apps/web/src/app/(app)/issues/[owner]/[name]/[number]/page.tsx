@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ComingSoon } from "@/components/coming-soon";
 import { FitBadge, IssueMeta, StateBadge, timeAgo } from "@/components/issue-bits";
+import { StartWorking } from "@/components/start-working";
 import { timeLeft, useNow } from "@/components/use-now";
 import { getJson, logEvent, type IssueDetail } from "@/lib/api";
 
@@ -141,10 +142,7 @@ export default function IssuePage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <ComingSoon feature="workspace" title="Start working in one click">
-          FirstPR will fork the repo, make a branch and open a ready-to-code workspace for this
-          issue, then help you open the pull request.
-        </ComingSoon>
+        <StartWorking repo={issue.repo} number={issue.number} open={open || issue.held_until !== null} />
         <ComingSoon feature="ai-mentor" title="Mentor">
           Ask for a hint when you are stuck: where the code lives, how to run the tests, what the
           maintainers expect.
