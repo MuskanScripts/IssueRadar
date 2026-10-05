@@ -6,7 +6,7 @@ import { defineConfig } from "vitest/config";
 
 // The web app reads brand.json and the demo fixtures straight from the Python
 // package so there is one copy of each (ADR 0002, ADR 0003).
-const core = fileURLToPath(new URL("../src/issueradar", import.meta.url));
+const core = fileURLToPath(new URL("../packages/core/src/issueradar", import.meta.url));
 const src = fileURLToPath(new URL("./src", import.meta.url));
 const brand = JSON.parse(readFileSync(`${core}/brand.json`, "utf8")) as { name: string };
 

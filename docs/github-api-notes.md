@@ -17,7 +17,7 @@ Status legend:
 - **Not stated**: the docs do not say. We will measure it and record the result here.
 - **To measure**: needs a real token. Planned milestone in brackets.
 
-Every number in this file also lives in `src/issueradar/config/defaults.yaml`.
+Every number in this file also lives in `packages/core/src/issueradar/config/defaults.yaml`.
 Code reads limits from config, never from constants.
 
 ## 1. REST primary rate limits

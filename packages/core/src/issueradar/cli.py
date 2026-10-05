@@ -1026,7 +1026,7 @@ def init(
 
 
 _EXAMPLE_CONFIG = """# Your settings. Anything left out uses the defaults
-# (src/issueradar/config/defaults.yaml).
+# (packages/core/src/issueradar/config/defaults.yaml).
 
 digest:
   top_n: 5

@@ -10,7 +10,7 @@ demo. Every number shown as real must be reproducible from real API data.
 
 ## Decision
 
-- Demo fixtures in `src/issueradar/demo/fixtures/` are written by hand, use
+- Demo fixtures in `packages/core/src/issueradar/demo/fixtures/` are written by hand, use
   made-up `sample/...` repository names and `example` users, and carry
   `"label": "Demo data"` at the top. The CLI and UI show that label wherever
   demo data appears.

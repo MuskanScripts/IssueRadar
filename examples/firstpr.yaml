@@ -1,5 +1,5 @@
 # Example config. Copy to firstpr.yaml (git-ignored) and change what you need.
-# Anything you leave out uses the defaults in src/issueradar/config/defaults.yaml.
+# Anything you leave out uses the defaults in packages/core/src/issueradar/config/defaults.yaml.
 #
 #   Copy-Item examples\firstpr.yaml firstpr.yaml
 #   firstpr doctor --config firstpr.yaml

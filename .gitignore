@@ -12,7 +12,7 @@ dist/
 htmlcov/
 
 # The dashboard build copied into the package for releases
-src/issueradar/web/
+packages/core/src/issueradar/web/
 
 # Digests written by `firstpr digest --send` in a clone
 /digests/

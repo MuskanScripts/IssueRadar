@@ -54,7 +54,7 @@ All of these are thin shells over the same core package.
 ## Code map (today)
 
 ```
-src/issueradar/
+packages/core/src/issueradar/
   brand.json, brand.py     product identity
   cli.py                   Typer app
   config/defaults.yaml     limits, thresholds, weights

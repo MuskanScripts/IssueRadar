@@ -1,5 +1,5 @@
 # Your settings. Anything you leave out uses the defaults:
-# https://github.com/MuskanScripts/IssueRadar/blob/main/src/issueradar/config/defaults.yaml
+# https://github.com/MuskanScripts/IssueRadar/blob/main/packages/core/src/issueradar/config/defaults.yaml
 
 digest:
   top_n: 5

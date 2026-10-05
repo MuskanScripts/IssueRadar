@@ -21,7 +21,7 @@ their sources are in [`docs/github-api-notes.md`](docs/github-api-notes.md).
 
 ## Architecture in one paragraph
 
-A Python core (`src/issueradar`) runs the pipeline **discover, fetch,
+A Python core (`packages/core/src/issueradar`) runs the pipeline **discover, fetch,
 normalise, enrich, score, rank, deliver**. A single GitHub client is the only
 code that talks to GitHub; it refuses anything but REST `GET` and GraphQL
 queries, and an API budgeter in front of it tracks every rate-limit bucket.

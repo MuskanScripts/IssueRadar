@@ -10,7 +10,7 @@ be visible to users.
 
 ## Decision
 
-`src/issueradar/config/defaults.yaml` holds every GitHub limit, retry setting,
+`packages/core/src/issueradar/config/defaults.yaml` holds every GitHub limit, retry setting,
 threshold and scoring weight. A pydantic schema (`issueradar.config.settings`)
 validates it, and the user's `firstpr.yaml` overrides any value. Code never
 hard-codes these numbers. Each GitHub number has its source in

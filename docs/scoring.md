@@ -2,7 +2,7 @@
 
 Every number IssueRadar shows comes from the rules on this page. All weights,
 thresholds and word lists live in
-[`src/issueradar/config/defaults.yaml`](../src/issueradar/config/defaults.yaml),
+[`packages/core/src/issueradar/config/defaults.yaml`](../packages/core/src/issueradar/config/defaults.yaml),
 and your own `firstpr.yaml` can change any of them. `firstpr explain <issue-url>`
 prints the reasons behind each result for a single issue.
 
@@ -10,7 +10,7 @@ Nothing here uses an AI model. The same inputs always give the same answer.
 
 ## 1. Is it free? (availability)
 
-Code: [`engine/availability.py`](../src/issueradar/engine/availability.py)
+Code: [`engine/availability.py`](../packages/core/src/issueradar/engine/availability.py)
 
 The checks run in this order. The first one that decides stops the rest.
 
@@ -59,7 +59,7 @@ up to `enrich.max_issues_per_repo` (30) per repo.
 
 ## 2. Level (difficulty)
 
-Code: [`engine/difficulty.py`](../src/issueradar/engine/difficulty.py)
+Code: [`engine/difficulty.py`](../packages/core/src/issueradar/engine/difficulty.py)
 
 ```
 score = starting point + sum(adjustments), clamped to 0..100
@@ -99,7 +99,7 @@ adjustments, and the evaluation harness measures accuracy against your labels.
 
 ## 3. Repo health (0 to 100)
 
-Code: [`engine/health.py`](../src/issueradar/engine/health.py)
+Code: [`engine/health.py`](../packages/core/src/issueradar/engine/health.py)
 
 ```
 health = 30 * first_response + 30 * outside_merge_rate + 20 * recent_commit
@@ -126,7 +126,7 @@ AI tools, and "open an issue before a pull request".
 
 ## 4. Stack fit
 
-Code: [`engine/stack.py`](../src/issueradar/engine/stack.py)
+Code: [`engine/stack.py`](../packages/core/src/issueradar/engine/stack.py)
 
 The issue's technologies:
 
@@ -154,7 +154,7 @@ tier_fit = 1 if the issue's tier is the target, 0.5 one tier away, 0 otherwise
 
 ## 5. Ranking
 
-Code: [`engine/ranking.py`](../src/issueradar/engine/ranking.py)
+Code: [`engine/ranking.py`](../packages/core/src/issueradar/engine/ranking.py)
 
 ```
 rank = 0.35 * tier_fit + 0.25 * health / 100 + 0.20 * stack_fit

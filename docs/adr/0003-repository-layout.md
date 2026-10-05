@@ -1,6 +1,6 @@
 # 0003. Repository layout
 
-- Status: accepted
+- Status: accepted (layout of the engine updated by ADR 0021)
 - Date: 2026-10-01
 
 ## Context
@@ -12,7 +12,7 @@ share demo fixtures and design decisions and are released together.
 
 One repository:
 
-- `src/issueradar/`: Python package (src layout), including `brand.json`,
+- `packages/core/src/issueradar/`: Python package (src layout), including `brand.json`,
   config defaults and demo fixtures.
 - `tests/`: Python tests. `tests/fixtures/github/` will hold recorded API
   responses (M1).

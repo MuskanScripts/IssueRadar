@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --ink: #14202b;
+  --ink-2: #51606e;
+  --line: #d9e0e7;
+  --accent: #0b6b63;
+  --accent-ink: #ffffff;
+  --good: #1f7a3d;
+  --warn: #b4570b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1419;
+    --surface: #151d24;
+    --ink: #e6edf3;
+    --ink-2: #93a3b2;
+    --line: #26323d;
+    --accent: #3fc1b3;
+    --accent-ink: #06201d;
+    --good: #5fd48a;
+    --warn: #f0a35e;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, "Segoe UI", sans-serif;
+}

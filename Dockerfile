@@ -7,8 +7,8 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY web/ ./
 # The dashboard reads brand.json and the demo fixtures from the Python package.
-COPY src/issueradar/brand.json /build/src/issueradar/brand.json
-COPY src/issueradar/demo/fixtures/demo.json /build/src/issueradar/demo/fixtures/demo.json
+COPY packages/core/src/issueradar/brand.json /build/packages/core/src/issueradar/brand.json
+COPY packages/core/src/issueradar/demo/fixtures/demo.json /build/packages/core/src/issueradar/demo/fixtures/demo.json
 RUN npm run build
 
 FROM python:3.13-slim
@@ -18,8 +18,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FIRSTPR_DB_URL=sqlite:////data/firstpr.sqlite
 WORKDIR /app
 COPY pyproject.toml README.md LICENSE CHANGELOG.md ./
-COPY src ./src
-COPY --from=web /build/web/dist ./src/issueradar/web
+COPY packages/core/src ./packages/core/src
+COPY --from=web /build/web/dist ./packages/core/src/issueradar/web
 RUN pip install . \
     && useradd --create-home --uid 10001 radar \
     && mkdir /data \

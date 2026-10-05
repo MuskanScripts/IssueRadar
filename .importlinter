@@ -1,0 +1,45 @@
+[importlinter]
+root_packages =
+    issueradar
+    firstpr_api
+    firstpr_worker
+
+[importlinter:contract:core-without-platform]
+name = The engine never imports the platform apps
+type = forbidden
+source_modules = issueradar
+forbidden_modules =
+    firstpr_api
+    firstpr_worker
+
+[importlinter:contract:apps-apart]
+name = The API and the worker do not import each other
+type = independence
+modules =
+    firstpr_api
+    firstpr_worker
+
+[importlinter:contract:pure-engine]
+name = Scoring stays pure: no GitHub calls, database or interfaces
+type = forbidden
+source_modules = issueradar.engine
+forbidden_modules =
+    issueradar.github
+    issueradar.storage
+    issueradar.sync
+    issueradar.api
+    issueradar.cli
+    issueradar.mcp_server
+
+[importlinter:contract:github-client-low-level]
+name = The GitHub client does not depend on anything above it
+type = forbidden
+source_modules = issueradar.github
+forbidden_modules =
+    issueradar.engine
+    issueradar.storage
+    issueradar.sync
+    issueradar.radar
+    issueradar.api
+    issueradar.cli
+    issueradar.mcp_server
