@@ -59,3 +59,20 @@ async def test_full_sync_then_mostly_304s(catalogue_url: str) -> None:
     second = await catalogue.sync(APP_OWNER, {REPO}, "ghs_hour_two", "app")
     assert second.status == "completed"
     assert second.budget["not_modified"] > 0
+
+
+async def test_cards_carry_the_engines_verdicts(catalogue_url: str) -> None:
+    fake = FakeGitHub()
+    build(fake)
+    catalogue = Catalogue(catalogue_url, pause_share=0.2, transport=fake.transport())
+    await catalogue.sync(APP_OWNER, {REPO}, "ghs_token", "app")
+
+    by_repo = catalogue.cards({REPO, "nobody/synced-this"})
+    assert set(by_repo) == {REPO}  # repos the engine never saw are left out
+    cards = by_repo[REPO]
+    assert cards and all(c.repo_full_name == REPO for c in cards)
+    states = {c.availability for c in cards}
+    assert states & {"free", "likely_free"}
+    sample = cards[0]
+    assert sample.tier in {"beginner", "intermediate", "pro"} and sample.time_bucket
+    assert sample.checklist and sample.availability_reasons

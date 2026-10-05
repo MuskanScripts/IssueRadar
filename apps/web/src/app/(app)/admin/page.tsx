@@ -87,10 +87,11 @@ export default function AdminPage() {
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <section className="rounded-lg border border-line bg-surface p-4">
           <h2 className="mb-1 font-semibold">Worker</h2>
           <p className={data.worker === "ok" ? "text-good" : "text-warn"}>{data.worker}</p>
+          <p className="text-sm text-ink-2">{data.issue_cards} open issues ready for picks</p>
         </section>
         <section className="rounded-lg border border-line bg-surface p-4">
           <h2 className="mb-1 font-semibold">GitHub budgets</h2>
@@ -102,6 +103,23 @@ export default function AdminPage() {
           <p className={`text-sm ${data.webhooks_waiting ? "text-warn" : "text-ink-2"}`}>
             {data.webhooks_waiting} waiting
           </p>
+        </section>
+        <section className="rounded-lg border border-line bg-surface p-4">
+          <h2 className="mb-1 font-semibold">&quot;I want this&quot;</h2>
+          {Object.keys(data.interest).length ? (
+            <ul className="grid gap-1 text-sm">
+              {Object.entries(data.interest)
+                .sort((a, b) => b[1] - a[1])
+                .map(([feature, count]) => (
+                  <li key={feature} className="flex justify-between gap-4">
+                    <span className="font-mono">{feature}</span>
+                    <span>{count}</span>
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-ink-2">No requests yet.</p>
+          )}
         </section>
       </div>
 

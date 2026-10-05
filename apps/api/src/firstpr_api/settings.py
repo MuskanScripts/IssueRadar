@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     github_webhook_secret: SecretStr = SecretStr("")
     # How many repos one person can watch.
     max_watches_per_user: int = 50
+    # The Refresh button on Explore works once in this many seconds per user.
+    refresh_every_seconds: int = 300
+    # The issue page asks GitHub for the latest state when the card is older than this.
+    live_after_seconds: int = 600
 
     @property
     def admin_login_set(self) -> frozenset[str]:

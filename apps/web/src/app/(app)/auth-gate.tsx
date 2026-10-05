@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getMe, signInUrl, type Me } from "@/lib/api";
 
@@ -9,19 +9,29 @@ export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: getMe, staleTime: 60_000 });
 }
 
-/** Sends signed-out visitors to GitHub sign-in, then back to this page. */
+// Pages that work before onboarding is finished.
+const BEFORE_ONBOARDING = ["/onboarding", "/profile", "/admin"];
+
+/** Sends signed-out visitors to GitHub sign-in, then back to this page, and new
+ * people to onboarding first. */
 export function AuthGate({ children }: { children: (me: Me) => React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: me, isPending, error } = useMe();
+  const needsOnboarding =
+    me != null && !me.onboarded && !BEFORE_ONBOARDING.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
     if (!isPending && !error && me === null) window.location.assign(signInUrl(pathname));
   }, [isPending, error, me, pathname]);
+  useEffect(() => {
+    if (needsOnboarding) router.replace("/onboarding");
+  }, [needsOnboarding, router]);
 
   if (error) {
     return <p className="text-warn">Could not load your account: {error.message}</p>;
   }
-  if (!me) return <p className="text-ink-2">Loading</p>;
+  if (!me || needsOnboarding) return <p className="text-ink-2">Loading</p>;
   return <>{children(me)}</>;
 }
 

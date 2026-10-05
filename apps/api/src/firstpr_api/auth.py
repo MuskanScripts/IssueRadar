@@ -18,7 +18,7 @@ from firstpr_api.deps import current_user, get_db, get_redis, get_settings, requ
 from firstpr_api.settings import Settings
 from firstpr_platform import accounts
 from firstpr_platform.crypto import TokenBox
-from firstpr_platform.db import User
+from firstpr_platform.db import Profile, User
 from firstpr_platform.github_oauth import GitHubAuthError, GitHubOAuth, pkce_pair
 
 STATE_COOKIE = "firstpr_oauth"
@@ -156,6 +156,8 @@ class Me(BaseModel):
     avatar_url: str | None
     role: Literal["user", "admin"]
     github: GitHubStatus
+    # False until the user finished or skipped onboarding.
+    onboarded: bool
 
 
 @router.get("/me", response_model=Me)
@@ -171,6 +173,7 @@ async def me(
     account = user.github
     if oauth is not None and box is not None:
         await accounts.verify(db, account, box, oauth, settings.github_verify_every_seconds)
+    profile = await db.get(Profile, user.id)
     status: Literal["connected", "reconnect_needed"] = (
         "connected" if account.status == accounts.CONNECTED else "reconnect_needed"
     )
@@ -182,4 +185,5 @@ async def me(
         avatar_url=user.avatar_url,
         role="admin" if user.role == "admin" else "user",
         github=GitHubStatus(login=account.login, status=status),
+        onboarded=profile is not None and profile.onboarded_at is not None,
     )

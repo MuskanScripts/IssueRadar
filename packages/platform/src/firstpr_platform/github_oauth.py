@@ -136,6 +136,27 @@ class GitHubOAuth:
         data: dict[str, Any] = resp.json()
         return data
 
+    async def get_issue(
+        self, access_token: str, full_name: str, number: int
+    ) -> dict[str, Any] | None:
+        """One issue as it is on GitHub right now, or None if it is gone."""
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        async with self._client() as client:
+            resp = await client.get(
+                f"{self._api}/repos/{full_name}/issues/{number}", headers=headers
+            )
+        if resp.status_code in (404, 410):
+            return None
+        if resp.status_code == 401:
+            raise GitHubAuthError("token no longer valid")
+        resp.raise_for_status()
+        data: dict[str, Any] = resp.json()
+        return data
+
     async def get_user(self, access_token: str) -> GitHubUser:
         headers = {
             "Authorization": f"Bearer {access_token}",

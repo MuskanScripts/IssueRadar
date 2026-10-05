@@ -5,9 +5,12 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
-COPY packages/platform /app/packages/platform
+# The engine (the firstpr package, built from packages/core) for fit and the
+# skill lists, the shared platform code, and the API itself.
+COPY pyproject.toml README.md LICENSE CHANGELOG.md /app/
+COPY packages /app/packages
 COPY apps/api /app/apps/api
-RUN pip install /app/packages/platform /app/apps/api \
+RUN pip install /app /app/packages/platform /app/apps/api \
     && useradd --create-home --uid 10001 firstpr
 
 USER firstpr

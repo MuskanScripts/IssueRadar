@@ -4,19 +4,23 @@ The FirstPR platform (the hosted website) is built here. The engine it shares wi
 
 | Folder | What it is | Run it with |
 |---|---|---|
-| `api/` | FastAPI app under `/api/v1`: health, GitHub sign-in, sessions, `/me`, watched repos, admin, GitHub webhooks | `uvicorn --factory firstpr_api.main:create_app` |
-| `worker/` | Arq worker on Redis: syncs the shared catalogue and people's own repos, handles webhooks | `arq firstpr_worker.main.WorkerSettings` |
+| `api/` | FastAPI app under `/api/v1`: health, GitHub sign-in, sessions, `/me`, onboarding, today's pick, Explore, issue pages, watched repos, admin, GitHub webhooks | `uvicorn --factory firstpr_api.main:create_app` |
+| `worker/` | Arq worker on Redis: syncs the shared catalogue and people's own repos, rebuilds the issue cards, holds daily picks, handles webhooks | `arq firstpr_worker.main.WorkerSettings` |
 | `web/` | Next.js app. Public pages are server-rendered and cached; pages after sign-in are client components that call the API | `npm run dev` |
 
-Code both the API and the worker need (database tables, migrations, GitHub sign-in and the app's token) is in `packages/platform` (`firstpr_platform`). The worker also uses the engine in `packages/core`.
+Code both the API and the worker need (database tables, migrations, GitHub sign-in, the app's token, fit and daily picks) is in `packages/platform` (`firstpr_platform`). Both also use the engine in `packages/core`: the worker to sync and score, the API for skill lists and fit.
 
 In front of them, a Caddy proxy (`infra/compose/Caddyfile`) puts everything on one address: `/api/*` goes to FastAPI, everything else to Next.js. One address means the session cookie works on every page with no extra setup.
 
 | Route | Kind | What it shows today |
 |---|---|---|
 | `/` | Public, server-rendered, cached 30 seconds | Intro text and the platform status, fetched by the server from the API |
-| `/home` | Signed in, client component | A greeting and the API status, fetched by the browser through the proxy |
-| `/profile` | Signed in, client component | Your GitHub account, its connection status, and Sign out |
+| `/onboarding` | Signed in, client component | Three short, skippable steps: level, skills, starter packs. New people land here first |
+| `/home` | Signed in, client component | Today's pick, why it was picked, how long it is held, and Show me another |
+| `/explore` | Signed in, client component | Every open issue nobody holds, with filters, best fit / recently active / shuffled order, Load more, and Refresh |
+| `/issues/<owner>/<repo>/<number>` | Signed in, client component | Why it is free, why it suits you, what to do first, repo health; checked live on GitHub when our copy is over 10 minutes old |
+| `/leaderboard`, `/paths` | Signed in, client component | Coming-soon placeholders with an "I want this" button |
+| `/profile` | Signed in, client component | Your GitHub account, its connection status, a link to change level and skills, and Sign out |
 | `/admin` | Admins only, client component | Every synced repo with its token, watchers and last result, the GitHub budgets, webhooks, and adding or removing catalogue repos |
 
 ## Run everything locally
@@ -36,8 +40,8 @@ People sign in with GitHub through a GitHub App. Nothing else is needed: no pass
    - Callback URL: `http://localhost:8080/api/v1/auth/github/callback`
    - Expire user authorization tokens: ticked
    - Request user authorization (OAuth) during installation: unticked
-   - Webhook, Active: unticked (webhooks come in Step 3)
-   - Account permissions: Email addresses, read-only. Nothing else yet.
+   - Webhook, Active: unticked (GitHub cannot reach localhost)
+   - Repository permissions: Issues and Pull requests, read-only. Account permissions: Email addresses, read-only.
    - Where can this app be installed: Only on this account
 2. On the app's page, copy the Client ID and generate a client secret.
 3. Copy `infra/compose/.env.example` to `infra/compose/.env` and fill in the client ID, the secret and a token key (the file says how to make one).
@@ -80,9 +84,23 @@ To turn on the catalogue sync, give the worker the GitHub App's ID and private k
 
 To receive them, set the app's webhook URL to `https://<your site>/api/v1/webhooks/github`, set the same secret on both sides, and subscribe to Issues, Issue comments, Pull requests, Pull request reviews and Repository.
 
+## Daily pick and Explore
+
+After every sync the worker turns each open issue into an issue card (`issue_cards`): the engine's verdicts on availability, level, time and repo health, plus the repo's stack. The API reads only these cards, so no page runs the engine. When there are no cards yet (the first start after an upgrade), the worker builds them from what earlier syncs stored.
+
+Fit is worked out per user on each request, from the cards and what the user chose in onboarding, with the engine's own pieces: tier fit against the chosen level, stack match against their skills, repo health, freshness and how many people already commented (`firstpr_platform.picks`). It is shown as a percentage, with the reasons in plain words.
+
+- **Today's pick** is made on the first visit of the user's local day (their browser's time zone), or by the worker every 15 minutes for people active in the last 14 days. It comes from their starter packs (all catalogue repos when they chose none) and their own watched repos.
+- **Holds:** a pick is held for 48 hours. A unique index allows one active hold per issue, so two people are never sent to the same issue. Held issues disappear from everyone else's Explore. A new day releases yesterday's pick if it was not started.
+- **Show me another** releases the pick and holds the next best one, at most 3 times a day. A swapped issue does not come back.
+- **Explore** lists open issues nobody else holds, with filters for level, skill, language and freshness, sorted by fit, recent activity or a shuffle seed, paged with a cursor.
+- **Refresh** on Explore queues a sync of the user's own repos with their token and of the catalogue (at most once in 5 minutes for everyone), then shows how many issues changed since.
+- **Logging:** every pick shown, swapped or opened, and every click to GitHub, goes to `recommendation_events` with the fit and its parts, for a learned ranking later.
+- **Coming soon:** placeholders sit where later features will live. "I want this" clicks are stored once per user and counted on `/admin`.
+
 ## Admin
 
-GitHub logins in `FIRSTPR_ADMIN_LOGINS` (comma-separated) get the admin role when they sign in, and an Admin link appears in the menu. `/admin` shows every synced repo (problems first), which token it uses, how many people watch it, the last result, the GitHub budgets, and webhook counts. Admins can add and remove catalogue repos there.
+GitHub logins in `FIRSTPR_ADMIN_LOGINS` (comma-separated) get the admin role when they sign in, and an Admin link appears in the menu. `/admin` shows every synced repo (problems first), which token it uses, how many people watch it, the last result, the GitHub budgets, webhook counts, how many issue cards are ready, and the "I want this" counts. Admins can add and remove catalogue repos there.
 
 ## Develop without Docker
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Session as OrmSession
 from firstpr_api.main import create_app
 from firstpr_api.settings import Settings
 from firstpr_platform.crypto import TokenBox
-from firstpr_platform.db import Base
+from firstpr_platform.db import Base, CatalogueRepo, IssueCard
 
 
 class FakeGitHub:
@@ -34,6 +35,8 @@ class FakeGitHub:
             "vitejs/vite": {"full_name": "vitejs/vite", "private": False},
             "muskanscripts/notes": {"full_name": "MuskanScripts/notes", "private": True},
         }
+        # "owner/name#number" -> the issue as GitHub returns it.
+        self.issues: dict[str, dict[str, Any]] = {}
 
     def _tokens(self) -> dict[str, Any]:
         self.issued += 1
@@ -66,6 +69,12 @@ class FakeGitHub:
             return httpx.Response(
                 200, json={**self.user, "avatar_url": "https://example.com/a.png"}
             )
+        if "/issues/" in url and url.startswith("https://api.github.com/repos/"):
+            repo, number = url.removeprefix("https://api.github.com/repos/").split("/issues/")
+            issue = self.issues.get(f"{repo.lower()}#{number}")
+            if issue is None:
+                return httpx.Response(404, json={"message": "Not Found"})
+            return httpx.Response(200, json=issue)
         if url.startswith("https://api.github.com/repos/"):
             name = url.removeprefix("https://api.github.com/repos/")
             repo = self.repos.get(name.lower())
@@ -151,6 +160,50 @@ def sign_in(client: TestClient, return_to: str | None = None) -> httpx.Response:
         params={"code": "good-code", "state": state},
         follow_redirects=False,
     )
+
+
+def add_card(
+    db: OrmSession, repo: str = "pallets/flask", number: int = 1, **values: Any
+) -> IssueCard:
+    """An issue card as the worker would write it, plus its repo in the catalogue."""
+    now = datetime.now(UTC)
+    if db.get(CatalogueRepo, repo) is None:
+        db.add(CatalogueRepo(full_name=repo, source="pack"))
+    card = IssueCard(
+        repo_full_name=repo,
+        number=number,
+        title=values.pop("title", f"Issue {number} in {repo}"),
+        url=f"https://github.com/{repo}/issues/{number}",
+        labels=values.pop("labels", ["good first issue"]),
+        repo_description="A repo",
+        language=values.pop("language", "Python"),
+        languages=values.pop("languages", ["python"]),
+        frameworks=values.pop("frameworks", []),
+        domains=values.pop("domains", []),
+        paths=[],
+        stars=100,
+        comments=values.pop("comments", 0),
+        opened_at=now - timedelta(days=10),
+        updated_at=values.pop("updated_at", now - timedelta(days=1)),
+        availability=values.pop("availability", "free"),
+        availability_reasons=["Free: no assignee and no linked pull request"],
+        tier=values.pop("tier", "beginner"),
+        difficulty_score=20,
+        time_bucket="half_a_day",
+        issue_type="bug",
+        difficulty_reasons=["Labelled good first issue"],
+        discussion_first=False,
+        health=values.pop("health", 80),
+        health_reasons=["Maintainers reply within a week"],
+        checklist=["Read the CONTRIBUTING guide before writing code."],
+        repo_notes=None,
+        changed_at=values.pop("changed_at", now),
+        refreshed_at=values.pop("refreshed_at", now),
+        **values,
+    )
+    db.add(card)
+    db.commit()
+    return card
 
 
 def csrf(client: TestClient) -> dict[str, str]:

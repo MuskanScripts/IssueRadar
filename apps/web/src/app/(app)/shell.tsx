@@ -1,7 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AuthGate, ReconnectBanner } from "./auth-gate";
+
+const LINKS: { href: string; label: string; soon?: boolean }[] = [
+  { href: "/home", label: "Home" },
+  { href: "/explore", label: "Explore" },
+  { href: "/leaderboard", label: "Leaderboard", soon: true },
+  { href: "/paths", label: "Paths", soon: true },
+];
+
+function NavLink({ href, label, soon }: { href: string; label: string; soon?: boolean }) {
+  const pathname = usePathname();
+  const here = pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    <Link
+      href={href}
+      aria-current={here ? "page" : undefined}
+      className={`flex items-center gap-1 ${here ? "font-semibold text-ink" : "text-ink-2 hover:text-ink"}`}
+    >
+      {label}
+      {soon ? (
+        <span className="rounded-full border border-line px-1.5 text-[10px] uppercase tracking-wide">
+          Soon
+        </span>
+      ) : null}
+    </Link>
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -9,18 +36,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AuthGate>
         {(me) => (
           <>
-            <nav className="flex items-center gap-6 border-b border-line pb-4">
+            <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-line pb-4">
               <Link href="/" className="text-lg font-bold">
                 FirstPR
               </Link>
-              <Link href="/home" className="text-ink-2 hover:text-ink">
-                Home
-              </Link>
-              {me.role === "admin" ? (
-                <Link href="/admin" className="text-ink-2 hover:text-ink">
-                  Admin
-                </Link>
-              ) : null}
+              {LINKS.map((link) => (
+                <NavLink key={link.href} {...link} />
+              ))}
+              {me.role === "admin" ? <NavLink href="/admin" label="Admin" /> : null}
               <Link
                 href="/profile"
                 className="ml-auto flex items-center gap-2 rounded-md px-2 py-1 hover:bg-surface"

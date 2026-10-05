@@ -3,6 +3,8 @@
 Every minute it writes a heartbeat the API's health check reads. Every 30
 minutes it syncs the shared catalogue with the app's token, and 15 minutes
 later it queues a personal sync for each active user with repos of their own.
+After each sync it rebuilds the issue cards the API reads, and every 15
+minutes it holds a daily pick for active users whose local day has none yet.
 Webhooks from GitHub are handled as they arrive.
 """
 
@@ -22,7 +24,10 @@ from firstpr_platform.github_app import AppTokenSource
 from firstpr_platform.github_oauth import GitHubOAuth
 from firstpr_worker.catalogue import Catalogue
 from firstpr_worker.jobs import (
+    cards_if_empty,
     handle_webhook,
+    make_daily_picks,
+    refresh_cards,
     seed_catalogue,
     sync_active_users,
     sync_catalogue,
@@ -66,6 +71,7 @@ async def startup(ctx: dict[str, Any]) -> None:
         )
     await heartbeat(ctx)
     await seed_catalogue(ctx)
+    await cards_if_empty(ctx)
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -86,11 +92,14 @@ class WorkerSettings:
         func(sync_user, **_SYNC),  # type: ignore[arg-type]
         func(sync_active_users, keep_result=0),
         func(handle_webhook, keep_result=0, max_tries=5),
+        func(refresh_cards, keep_result=0, timeout=30 * 60),
+        func(make_daily_picks, keep_result=0),
     ]
     cron_jobs: ClassVar = [
         cron(heartbeat, second=0, run_at_startup=False),
         cron(sync_catalogue, minute={0, 30}, second=10, unique=True, keep_result=0),
         cron(sync_active_users, minute={15, 45}, second=10, unique=True, keep_result=0),
+        cron(make_daily_picks, minute={5, 20, 35, 50}, second=10, unique=True, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

@@ -11,7 +11,7 @@ from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from firstpr_api import __version__, admin, auth, health, watches, webhooks
+from firstpr_api import __version__, admin, auth, health, issues, profile, watches, webhooks
 from firstpr_api.jobs import ArqJobs
 from firstpr_api.settings import Settings
 from firstpr_platform.crypto import TokenBox
@@ -79,6 +79,8 @@ def create_app(
     v1.include_router(health.router)
     v1.include_router(auth.router)
     v1.include_router(watches.router)
+    v1.include_router(profile.router)
+    v1.include_router(issues.router)
     v1.include_router(admin.router)
     v1.include_router(webhooks.router)
     app.include_router(v1)

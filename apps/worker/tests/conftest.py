@@ -14,9 +14,40 @@ from sqlalchemy.orm import Session as OrmSession
 
 from firstpr_platform.crypto import TokenBox
 from firstpr_platform.db import Base, session_factory
-from firstpr_worker.catalogue import SyncResult
+from firstpr_worker.catalogue import Card, SyncResult
 from firstpr_worker.settings import Settings
 from issueradar.sync.service import RepoOutcome
+
+
+def make_card(repo: str, number: int, **values: Any) -> Card:
+    fields: dict[str, Any] = {
+        "repo_full_name": repo,
+        "number": number,
+        "title": f"Issue {number}",
+        "url": None,
+        "labels": [],
+        "repo_description": None,
+        "language": "Python",
+        "languages": ["python"],
+        "frameworks": [],
+        "domains": [],
+        "paths": [],
+        "stars": 1,
+        "comments": 0,
+        "opened_at": None,
+        "updated_at": None,
+        "availability": "free",
+        "availability_reasons": [],
+        "tier": "beginner",
+        "difficulty_score": 10,
+        "time_bucket": "under_an_hour",
+        "issue_type": "docs",
+        "difficulty_reasons": [],
+        "discussion_first": False,
+        "health": 70,
+        "health_reasons": [],
+    }
+    return Card(**{**fields, **values})
 
 
 class FakeCatalogue:
@@ -26,6 +57,11 @@ class FakeCatalogue:
         self.calls: list[tuple[int, set[str], str, str]] = []
         self.cleared: list[int] = []
         self.interrupt_after: int | None = None
+        # What cards() returns for each repo; repos not listed have no open issues.
+        self.issues: dict[str, list[Card]] = {}
+
+    def cards(self, repos: set[str]) -> dict[str, list[Card]]:
+        return {name: list(self.issues.get(name, [])) for name in repos}
 
     def clear_watchlist(self, owner: int) -> None:
         self.cleared.append(owner)

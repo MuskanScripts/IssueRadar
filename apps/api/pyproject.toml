@@ -17,6 +17,8 @@ dependencies = [
   "psycopg[binary]>=3.2,<4",
   "redis>=5,<7",
   "arq>=0.26,<1",
+  # The engine (packages/core) and the shared platform code (packages/platform).
+  "firstpr",
   "firstpr-platform",
 ]
 

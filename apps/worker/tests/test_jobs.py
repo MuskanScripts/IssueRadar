@@ -9,11 +9,15 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from conftest import make_card
 from firstpr_platform.crypto import TokenBox
 from firstpr_platform.db import (
     CatalogueRepo,
     GitHubAccount,
+    IssueCard,
+    Profile,
     RepoSync,
+    Reservation,
     Session,
     User,
     Watch,
@@ -177,3 +181,51 @@ async def test_webhooks(ctx: dict[str, Any], sync_db: OrmSession, box: TokenBox)
     sync_db.expire_all()
     assert sync_db.scalar(select(GitHubAccount.status)) == "reconnect_needed"
     assert all(e.processed_at for e in sync_db.scalars(select(WebhookEvent)))
+
+
+async def test_each_sync_rebuilds_the_issue_cards(ctx: dict[str, Any], sync_db: OrmSession) -> None:
+    sync_db.add(CatalogueRepo(full_name="a/one", source="pack"))
+    sync_db.commit()
+    fake = ctx["catalogue"]
+    fake.issues["a/one"] = [make_card("a/one", 1), make_card("a/one", 2)]
+    await jobs.sync_catalogue(ctx)
+    cards = {c.number: c for c in sync_db.scalars(select(IssueCard))}
+    assert set(cards) == {1, 2}
+    first_change = cards[1].changed_at
+
+    # Issue 2 was closed, issue 1 got claimed, issue 3 is new.
+    fake.issues["a/one"] = [make_card("a/one", 1, availability="claimed"), make_card("a/one", 3)]
+    await jobs.sync_catalogue(ctx)
+    sync_db.expire_all()
+    cards = {c.number: c for c in sync_db.scalars(select(IssueCard))}
+    assert set(cards) == {1, 3}
+    assert cards[1].availability == "claimed" and cards[1].changed_at > first_change
+
+
+async def test_cards_are_built_once_when_there_are_none(ctx: dict[str, Any]) -> None:
+    assert await jobs.cards_if_empty(ctx) is True
+    assert ctx["redis"].queued[-1][0] == "refresh_cards"
+
+
+async def test_daily_picks_for_active_people_who_finished_onboarding(
+    ctx: dict[str, Any], sync_db: OrmSession, box: TokenBox
+) -> None:
+    sync_db.add(CatalogueRepo(full_name="a/one", source="pack"))
+    sync_db.commit()
+    ctx["catalogue"].issues["a/one"] = [make_card("a/one", n) for n in (1, 2, 3)]
+    await jobs.sync_catalogue(ctx)
+    ready = add_user(sync_db, box, "ready")
+    add_user(sync_db, box, "new")  # has not finished onboarding
+    away = add_user(sync_db, box, "away", seen_days_ago=30)
+    for user in (ready, away):
+        sync_db.add(
+            Profile(
+                user_id=user.id, level="beginner", packs=[], timezone="UTC", onboarded_at=utcnow()
+            )
+        )
+    sync_db.commit()
+
+    assert await jobs.make_daily_picks(ctx) == 1
+    assert await jobs.make_daily_picks(ctx) == 1  # the same pick, not a second one
+    holds = sync_db.scalars(select(Reservation)).all()
+    assert [h.user_id for h in holds] == [ready.id]
