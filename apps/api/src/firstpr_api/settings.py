@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     refresh_every_seconds: int = 300
     # The issue page asks GitHub for the latest state when the card is older than this.
     live_after_seconds: int = 600
+    # The app's URL name (github.com/apps/<slug>), for the "Install FirstPR" link.
+    github_app_slug: str = ""
+    # Where everyone opens their first pull request, e.g. "MuskanScripts/firstpr-practice".
+    # Empty turns the practice rule off.
+    practice_repo: str = ""
+    # Open pull requests a person can have waiting at once.
+    max_open_prs: int = 3
 
     @property
     def admin_login_set(self) -> frozenset[str]:

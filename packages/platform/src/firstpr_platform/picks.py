@@ -39,6 +39,8 @@ from issueradar.engine.rules import load_packs
 from issueradar.models import Availability, Tier, TimeBucket
 
 HOLD = timedelta(hours=48)
+# Once someone started working on an issue, it stays theirs this long.
+WORK_HOLD = timedelta(days=30)
 SWAPS_PER_DAY = 3
 SWAPPED = "swapped"
 EXPIRED = "expired"
@@ -327,14 +329,20 @@ async def todays_pick(
     day = local_day(taste, now).isoformat()
     await expire_old_holds(db, now)
     held = await active_hold(db, user_id, day)
-    if held is not None and held.card.availability in OPEN_STATES:
+    # A started pick stays, even when the sync now sees the user's own claim on it.
+    if held is not None and (held.started_at or held.card.availability in OPEN_STATES):
         await db.commit()
         return held
     # A new day, or today's pick was claimed or got a PR since: release it and
-    # pick again. That does not count as one of the user's swaps.
+    # pick again. That does not count as one of the user's swaps. Issues the
+    # user started working on stay held.
     await db.execute(
         update(Reservation)
-        .where(Reservation.user_id == user_id, Reservation.status == ACTIVE)
+        .where(
+            Reservation.user_id == user_id,
+            Reservation.status == ACTIVE,
+            Reservation.started_at.is_(None),
+        )
         .values(status=EXPIRED, ended_at=now)
     )
     await db.commit()
@@ -343,6 +351,64 @@ async def todays_pick(
 
 class SwapLimitReached(Exception):
     pass
+
+
+class AlreadyStarted(Exception):
+    pass
+
+
+class HeldByOther(Exception):
+    pass
+
+
+async def hold_for_work(
+    db: AsyncSession, user_id: int, card: IssueCard, now: datetime | None = None
+) -> Reservation:
+    """Keep this issue for the user who clicked Start working (WORK_HOLD long)."""
+    now = now or utcnow()
+    await expire_old_holds(db, now)
+    hold = await db.scalar(
+        select(Reservation).where(Reservation.card_id == card.id, Reservation.status == ACTIVE)
+    )
+    if hold is not None and hold.user_id != user_id:
+        raise HeldByOther
+    if hold is None:
+        taste = await load_taste(db, user_id)
+        result = fit(card, taste, now)
+        hold = Reservation(
+            user_id=user_id,
+            card_id=card.id,
+            status=ACTIVE,
+            day=local_day(taste, now).isoformat(),
+            fit=result.score if result else 0.0,
+            reserved_at=now,
+            expires_at=now + WORK_HOLD,
+        )
+        db.add(hold)
+    hold.started_at = hold.started_at or now
+    hold.expires_at = max(hold.expires_at, now + WORK_HOLD)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HeldByOther from None
+    return hold
+
+
+async def release_work(
+    db: AsyncSession, user_id: int, card_id: int, now: datetime | None = None
+) -> None:
+    now = now or utcnow()
+    await db.execute(
+        update(Reservation)
+        .where(
+            Reservation.user_id == user_id,
+            Reservation.card_id == card_id,
+            Reservation.status == ACTIVE,
+        )
+        .values(status=EXPIRED, ended_at=now)
+    )
+    await db.commit()
 
 
 async def show_another(
@@ -355,6 +421,8 @@ async def show_another(
     if await swaps_today(db, user_id, day) >= SWAPS_PER_DAY:
         raise SwapLimitReached
     held = await active_hold(db, user_id, day)
+    if held is not None and held.started_at is not None:
+        raise AlreadyStarted
     if held is not None:
         held.status = SWAPPED
         held.ended_at = now

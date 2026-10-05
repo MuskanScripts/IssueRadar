@@ -80,6 +80,7 @@ export type Today = {
   pick: Issue | null;
   held_until: string | null;
   swaps_left: number;
+  started: boolean;
   empty_reason: string | null;
 };
 
@@ -166,32 +167,56 @@ export async function getSyncOverview(): Promise<SyncOverview> {
   return (await resp.json()) as SyncOverview;
 }
 
-/** The error text FastAPI sent ("detail"), or a fallback with the status code. */
-export async function problem(resp: Response, fallback: string): Promise<string> {
+/** An API error, with FastAPI's message and, for some, a code and extra fields
+ * (for example `install_needed` with `install_url`). */
+export class ApiError extends Error {
+  status: number;
+  code: string | null;
+  extra: Record<string, unknown>;
+
+  constructor(status: number, message: string, code: string | null, extra: Record<string, unknown>) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.extra = extra;
+  }
+}
+
+async function apiError(resp: Response, fallback: string): Promise<ApiError> {
   try {
     const body = await resp.json();
-    if (typeof body.detail === "string") return body.detail;
+    const detail = body.detail;
+    if (typeof detail === "string") return new ApiError(resp.status, detail, null, {});
+    if (detail && typeof detail === "object" && typeof detail.message === "string") {
+      const { code, message, ...extra } = detail as { code?: string; message: string };
+      return new ApiError(resp.status, message, code ?? null, extra);
+    }
   } catch {
     // not JSON
   }
-  return `${fallback} (${resp.status})`;
+  return new ApiError(resp.status, `${fallback} (${resp.status})`, null, {});
 }
 
-/** A signed-in GET. Throws with the API's own message when it fails. */
+/** The error text FastAPI sent ("detail"), or a fallback with the status code. */
+export async function problem(resp: Response, fallback: string): Promise<string> {
+  return (await apiError(resp, fallback)).message;
+}
+
+/** A signed-in GET. Throws an ApiError with the API's own message when it fails. */
 export async function getJson<T>(path: string, what: string): Promise<T> {
   const resp = await fetch(path, { cache: "no-store", credentials: "same-origin" });
-  if (!resp.ok) throw new Error(await problem(resp, `Could not load ${what}`));
+  if (!resp.ok) throw await apiError(resp, `Could not load ${what}`);
   return (await resp.json()) as T;
 }
 
-/** A write that returns JSON. Throws with the API's own message when it fails. */
+/** A write that returns JSON. Throws an ApiError with the API's own message when it fails. */
 export async function sendJson<T>(
   path: string,
   what: string,
   options: { method?: "POST" | "PUT" | "DELETE"; json?: unknown } = {},
 ): Promise<T> {
   const resp = await send(path, options);
-  if (!resp.ok) throw new Error(await problem(resp, `Could not ${what}`));
+  if (!resp.ok) throw await apiError(resp, `Could not ${what}`);
   return (await resp.json()) as T;
 }
 
@@ -208,3 +233,54 @@ export function logEvent(
     json: { repo: issue.repo, number: issue.number, surface, action },
   }).catch(() => undefined);
 }
+
+export type WorkspaceStep = {
+  key: string;
+  label: string;
+  state: "pending" | "running" | "done" | "failed" | "skipped";
+  detail: string;
+};
+
+export type Workspace = {
+  id: number;
+  repo: string;
+  number: number;
+  issue_title: string;
+  issue_url: string | null;
+  practice: boolean;
+  mode: "codespace" | "local";
+  status: "queued" | "working" | "ready" | "failed" | "pr_open" | "closed";
+  steps: WorkspaceStep[];
+  note: string | null;
+  help_url: string | null;
+  fork: string | null;
+  branch: string | null;
+  base_branch: string | null;
+  clone_url: string | null;
+  codespace: { name: string; url: string | null; state: string | null } | null;
+  pull_request: { number: number | null; url: string; state: string | null } | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WorkspaceList = {
+  items: Workspace[];
+  practice_repo: string | null;
+  practice_done: boolean;
+  open_prs: number;
+  open_pr_limit: number;
+};
+
+export type WorkChanges = {
+  ahead_by: number;
+  commits: { sha: string; message: string }[];
+  files: { filename: string; status: string; additions: number; deletions: number }[];
+  compare_url: string | null;
+  pull_request: Workspace["pull_request"];
+};
+
+export type PullDraft = { title: string; body: string; base: string; head: string; from_template: boolean };
+
+export type PullResult = { opened: boolean; manual_url: string | null; workspace: Workspace };
+
+export const workspacePath = (ws: { id: number }) => `/workspaces/${ws.id}`;

@@ -89,6 +89,8 @@ class Today(BaseModel):
     pick: IssueOut | None
     held_until: datetime | None
     swaps_left: int
+    # True once the user clicked Start working on it.
+    started: bool
     # Why there is no pick, in words people understand.
     empty_reason: str | None
 
@@ -165,13 +167,19 @@ async def _today(db: AsyncSession, user: User, hold: Reservation | None) -> Toda
             else "The first sync has not finished yet. Your pick appears once issues are in."
         )
         return Today(
-            day=day, pick=None, held_until=None, swaps_left=swaps_left, empty_reason=reason
+            day=day,
+            pick=None,
+            held_until=None,
+            swaps_left=swaps_left,
+            started=False,
+            empty_reason=reason,
         )
     return Today(
         day=day,
         pick=issue_out(hold.card, picks.fit(hold.card, taste, now), held=True),
         held_until=hold.expires_at,
         swaps_left=swaps_left,
+        started=hold.started_at is not None,
         empty_reason=None,
     )
 
@@ -194,6 +202,10 @@ async def another(
     except picks.SwapLimitReached:
         raise HTTPException(
             429, f"You can ask for another pick {picks.SWAPS_PER_DAY} times a day."
+        ) from None
+    except picks.AlreadyStarted:
+        raise HTTPException(
+            409, "You already started working on today's pick. Close it first to swap."
         ) from None
     return await _today(db, user, hold)
 

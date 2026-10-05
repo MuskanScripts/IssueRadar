@@ -24,7 +24,7 @@ LEVELS = {
 }
 # Coming-soon features people can ask for. Counted on the admin page.
 FEATURES = (
-    "workspace",
+    "hosted-workspaces",
     "vscode-extension",
     "ai-mentor",
     "leaderboard",

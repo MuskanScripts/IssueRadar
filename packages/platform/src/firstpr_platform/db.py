@@ -266,6 +266,8 @@ class Reservation(Base):
     reserved_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
     ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # Set when the user clicked Start working. A started hold survives a new day.
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
     card: Mapped[IssueCard] = relationship(lazy="joined")
 
@@ -296,6 +298,45 @@ class FeatureInterest(Base):
     )
     feature: Mapped[str] = mapped_column(String(40), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class Workspace(Base):
+    """One user working on one issue: their fork, branch, Codespace and pull request."""
+
+    __tablename__ = "workspaces"
+    __table_args__ = (UniqueConstraint("user_id", "repo_full_name", "number"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    repo_full_name: Mapped[str] = mapped_column(String(200))
+    number: Mapped[int] = mapped_column(Integer)
+    issue_title: Mapped[str] = mapped_column(Text)
+    issue_url: Mapped[str | None] = mapped_column(String(500))
+    # True on the practice repo, where everyone opens their first pull request.
+    practice: Mapped[bool] = mapped_column(Boolean, default=False)
+    # "codespace" or "local" (clone and work on your own computer).
+    mode: Mapped[str] = mapped_column(String(20))
+    # queued, working, ready, failed, pr_open, closed
+    status: Mapped[str] = mapped_column(String(20))
+    # [{"key", "label", "state": pending|running|done|failed|skipped, "detail"}]
+    steps: Mapped[list[dict[str, str]]] = mapped_column(JSON, default=list)
+    # Shown above everything else: why it failed, or why it fell back to local.
+    note: Mapped[str | None] = mapped_column(Text)
+    help_url: Mapped[str | None] = mapped_column(String(500))
+    fork_full_name: Mapped[str | None] = mapped_column(String(200))
+    base_branch: Mapped[str | None] = mapped_column(String(200))
+    base_sha: Mapped[str | None] = mapped_column(String(64))
+    branch: Mapped[str | None] = mapped_column(String(200))
+    codespace_name: Mapped[str | None] = mapped_column(String(200))
+    codespace_url: Mapped[str | None] = mapped_column(String(500))
+    codespace_state: Mapped[str | None] = mapped_column(String(40))
+    codespace_checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    pr_number: Mapped[int | None] = mapped_column(Integer)
+    pr_url: Mapped[str | None] = mapped_column(String(500))
+    pr_state: Mapped[str | None] = mapped_column(String(20))
+    pr_opened_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

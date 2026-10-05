@@ -95,16 +95,23 @@ export default function HomePage() {
             >
               Open the issue
             </Link>
+            {data?.started ? (
+              <Link href="/workspaces" className="rounded-md border border-line px-4 py-2 font-semibold">
+                You started this. Go to My work
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={() => another.mutate()}
-              disabled={another.isPending || data?.swaps_left === 0}
+              disabled={another.isPending || data?.swaps_left === 0 || data?.started}
               className="rounded-md border border-line px-4 py-2 font-semibold disabled:opacity-50"
             >
               {another.isPending ? "Finding another" : "Show me another"}
             </button>
             <span className="text-sm text-ink-2">
-              {data?.swaps_left === 0
+              {data?.started
+                ? "Started picks stay yours until you stop working on them."
+                : data?.swaps_left === 0
                 ? "No more swaps today. A new pick arrives tomorrow."
                 : `${data?.swaps_left} swap${data?.swaps_left === 1 ? "" : "s"} left today`}
             </span>

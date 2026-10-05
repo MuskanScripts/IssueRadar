@@ -4,8 +4,8 @@ The FirstPR platform (the hosted website) is built here. The engine it shares wi
 
 | Folder | What it is | Run it with |
 |---|---|---|
-| `api/` | FastAPI app under `/api/v1`: health, GitHub sign-in, sessions, `/me`, onboarding, today's pick, Explore, issue pages, watched repos, admin, GitHub webhooks | `uvicorn --factory firstpr_api.main:create_app` |
-| `worker/` | Arq worker on Redis: syncs the shared catalogue and people's own repos, rebuilds the issue cards, holds daily picks, handles webhooks | `arq firstpr_worker.main.WorkerSettings` |
+| `api/` | FastAPI app under `/api/v1`: health, GitHub sign-in, sessions, `/me`, onboarding, today's pick, Explore, issue pages, workspaces and pull requests, watched repos, admin, GitHub webhooks | `uvicorn --factory firstpr_api.main:create_app` |
+| `worker/` | Arq worker on Redis: syncs the shared catalogue and people's own repos, rebuilds the issue cards, holds daily picks, sets up workspaces, handles webhooks | `arq firstpr_worker.main.WorkerSettings` |
 | `web/` | Next.js app. Public pages are server-rendered and cached; pages after sign-in are client components that call the API | `npm run dev` |
 
 Code both the API and the worker need (database tables, migrations, GitHub sign-in, the app's token, fit and daily picks) is in `packages/platform` (`firstpr_platform`). Both also use the engine in `packages/core`: the worker to sync and score, the API for skill lists and fit.
@@ -19,6 +19,8 @@ In front of them, a Caddy proxy (`infra/compose/Caddyfile`) puts everything on o
 | `/home` | Signed in, client component | Today's pick, why it was picked, how long it is held, and Show me another |
 | `/explore` | Signed in, client component | Every open issue nobody holds, with filters, best fit / recently active / shuffled order, Load more, and Refresh |
 | `/issues/<owner>/<repo>/<number>` | Signed in, client component | Why it is free, why it suits you, what to do first, repo health; checked live on GitHub when our copy is over 10 minutes old |
+| `/workspaces` | Signed in, client component | My work: the issues you started, with their state, and the practice-repo rule |
+| `/workspaces/<id>` | Signed in, client component | The setup steps live, Open your Codespace or clone instructions, I finished (commits and files), and the Create pull request form |
 | `/leaderboard`, `/paths` | Signed in, client component | Coming-soon placeholders with an "I want this" button |
 | `/profile` | Signed in, client component | Your GitHub account, its connection status, a link to change level and skills, and Sign out |
 | `/admin` | Admins only, client component | Every synced repo with its token, watchers and last result, the GitHub budgets, webhooks, and adding or removing catalogue repos |
@@ -40,8 +42,9 @@ People sign in with GitHub through a GitHub App. Nothing else is needed: no pass
    - Callback URL: `http://localhost:8080/api/v1/auth/github/callback`
    - Expire user authorization tokens: ticked
    - Request user authorization (OAuth) during installation: unticked
+   - Setup URL: `http://localhost:8080/api/v1/github/installed`, with Redirect on update ticked
    - Webhook, Active: unticked (GitHub cannot reach localhost)
-   - Repository permissions: Issues and Pull requests, read-only. Account permissions: Email addresses, read-only.
+   - Repository permissions: Administration, Contents, Pull requests and Codespaces read and write (for Start working, see below); Issues and Metadata read-only. Account permissions: Email addresses, read-only.
    - Where can this app be installed: Only on this account
 2. On the app's page, copy the Client ID and generate a client secret.
 3. Copy `infra/compose/.env.example` to `infra/compose/.env` and fill in the client ID, the secret and a token key (the file says how to make one).
@@ -97,6 +100,25 @@ Fit is worked out per user on each request, from the cards and what the user cho
 - **Refresh** on Explore queues a sync of the user's own repos with their token and of the catalogue (at most once in 5 minutes for everyone), then shows how many issues changed since.
 - **Logging:** every pick shown, swapped or opened, and every click to GitHub, goes to `recommendation_events` with the fit and its parts, for a learned ranking later.
 - **Coming soon:** placeholders sit where later features will live. "I want this" clicks are stored once per user and counted on `/admin`.
+
+## Workspaces and pull requests
+
+From an issue page, **Start working** sets everything up in the user's own GitHub account, in the worker, with their own token:
+
+1. Check the FirstPR GitHub App is installed on their account. If it is not, the page shows an Install button (`https://github.com/apps/<FIRSTPR_GITHUB_APP_SLUG>/installations/new`); after installing, GitHub sends them back to the same issue through the app's Setup URL. They should choose **All repositories**, so the app can see the fork it makes.
+2. Fork the repo, or reuse their fork, and bring it up to date with upstream.
+3. Create a branch, `firstpr/<number>-<title>`.
+4. Start a Codespace on that branch with a 15-minute idle timeout and a 7-day retention period. Or skip it with **Work on my computer**.
+
+The workspace page follows the steps live (server-sent events, with polling as a fallback). When a Codespace cannot be created or does not start (no hours left, a broken dev container), the workspace falls back to clone instructions instead of an error. The issue stays held for the user while they work on it (30 days), and survives a new day.
+
+**I finished** compares the branch with where it started and lists the commits and changed files. **Create pull request** opens a form with the title and `Fixes #<number>` filled in, starting from the repo's own pull request template when it has one. Nothing is sent until the user clicks. When GitHub does not let the app open the pull request on the upstream repo (the app is not installed there), the page gives them GitHub's own form, already filled in, and FirstPR picks the pull request up within a few minutes.
+
+Rules:
+
+- At most 3 open pull requests at a time (`FIRSTPR_MAX_OPEN_PRS`).
+- When `FIRSTPR_PRACTICE_REPO` is set (for example a repo of easy practice issues you own and add to the catalogue), a person's first pull request has to go there before they can open one on a real project. Empty turns the rule off.
+- **No GitHub write without a click.** Forking, syncing the fork, creating the branch and the Codespace, opening the pull request and deleting the Codespace all go through one `_write` method in `firstpr_platform.github_user`, called only from the user's own POST (Start working, Try again, Create pull request, Stop working). Scheduled jobs only read: every 5 minutes the worker checks Codespace states and looks for pull requests opened on GitHub's form. A test runs every scheduled job and checks GitHub saw no writes. GitHub itself stops idle Codespaces and deletes old ones, so FirstPR never has to.
 
 ## Admin
 

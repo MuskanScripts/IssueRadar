@@ -11,6 +11,7 @@ from urllib.parse import parse_qs
 import fakeredis
 import httpx
 import pytest
+from fake_user_github import FakeUserGitHub
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session as OrmSession
@@ -37,6 +38,8 @@ class FakeGitHub:
         }
         # "owner/name#number" -> the issue as GitHub returns it.
         self.issues: dict[str, dict[str, Any]] = {}
+        # Forks, branches, Codespaces and pull requests for workspaces.
+        self.work = FakeUserGitHub()
 
     def _tokens(self) -> dict[str, Any]:
         self.issued += 1
@@ -69,6 +72,13 @@ class FakeGitHub:
             return httpx.Response(
                 200, json={**self.user, "avatar_url": "https://example.com/a.png"}
             )
+        path = request.url.path
+        if (
+            path.startswith(("/user/installations", "/user/codespaces"))
+            or path.removeprefix("/repos/").lower() in self.work.repos
+            or (path.startswith("/repos/") and "/issues/" not in path and path.count("/") > 3)
+        ):
+            return self.work.handler(request)
         if "/issues/" in url and url.startswith("https://api.github.com/repos/"):
             repo, number = url.removeprefix("https://api.github.com/repos/").split("/issues/")
             issue = self.issues.get(f"{repo.lower()}#{number}")
@@ -118,6 +128,7 @@ def settings(tmp_path: Path) -> Settings:
         github_verify_every_seconds=300,
         github_webhook_secret="webhook-test-secret",
         max_watches_per_user=3,
+        github_app_slug="firstpr-dev",
     )
 
 

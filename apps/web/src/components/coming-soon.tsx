@@ -6,7 +6,7 @@ import { getJson, sendJson } from "@/lib/api";
 // Features that are planned but not built. Each one shows where it will live,
 // and "I want this" clicks are counted on the admin page to decide what comes next.
 export type Feature =
-  | "workspace"
+  | "hosted-workspaces"
   | "vscode-extension"
   | "ai-mentor"
   | "leaderboard"

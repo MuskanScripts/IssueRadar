@@ -7,6 +7,7 @@ import { AuthGate, ReconnectBanner } from "./auth-gate";
 const LINKS: { href: string; label: string; soon?: boolean }[] = [
   { href: "/home", label: "Home" },
   { href: "/explore", label: "Explore" },
+  { href: "/workspaces", label: "My work" },
   { href: "/leaderboard", label: "Leaderboard", soon: true },
   { href: "/paths", label: "Paths", soon: true },
 ];

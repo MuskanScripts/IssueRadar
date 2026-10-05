@@ -16,7 +16,7 @@ from typing import Any
 
 from sqlalchemy import func, select
 
-from firstpr_platform import accounts, picks, plan
+from firstpr_platform import accounts, picks, plan, workspaces
 from firstpr_platform.db import (
     CatalogueRepo,
     GitHubAccount,
@@ -27,8 +27,10 @@ from firstpr_platform.db import (
     User,
     Watch,
     WebhookEvent,
+    Workspace,
     utcnow,
 )
+from firstpr_platform.github_user import UserGitHub
 from firstpr_worker.catalogue import APP_OWNER, Card, SyncResult, engine_user_id, pack_repos
 
 # Must match BUDGET_PREFIX in apps/api.
@@ -251,3 +253,96 @@ async def handle_webhook(ctx: dict[str, Any], delivery_id: str) -> str:
         event.result = result
         await db.commit()
     return result
+
+
+# ------------------------------------------------------------- workspaces
+
+POLL_EVERY_SECONDS = 10
+POLL_TRIES = 60
+
+
+def _user_github(ctx: dict[str, Any], token: str) -> UserGitHub:
+    return UserGitHub(
+        token, api_url=ctx["settings"].github_api_url, transport=ctx.get("github_transport")
+    )
+
+
+async def _token_for(ctx: dict[str, Any], db: Any, user_id: int) -> tuple[str | None, str]:
+    box, oauth = ctx.get("box"), ctx.get("oauth")
+    user = await db.get(User, user_id)
+    if user is None or box is None or oauth is None:
+        return None, ""
+    return await accounts.usable_token(db, user.github, box, oauth), user.github.login
+
+
+async def start_workspace(ctx: dict[str, Any], workspace_id: int) -> str:
+    """Fork, branch and Codespace for a workspace. Queued only by the user's click."""
+    async with ctx["db"]() as db:
+        ws = await db.get(Workspace, workspace_id)
+        if ws is None or ws.status not in (workspaces.QUEUED, workspaces.FAILED):
+            return "nothing to do"
+        token, login = await _token_for(ctx, db, ws.user_id)
+        if token is None:
+            ws.status = workspaces.FAILED
+            ws.note = "Reconnect your GitHub account, then try again."
+            await db.commit()
+            return "needs reconnecting"
+        async with _user_github(ctx, token) as gh:
+            await workspaces.start(db, ws, gh, login, sleep=ctx.get("sleep", asyncio.sleep))
+        if ws.status == workspaces.WORKING and ws.codespace_name:
+            await ctx["redis"].enqueue_job("poll_workspace", ws.id, 1, _defer_by=POLL_EVERY_SECONDS)
+        return str(ws.status)
+
+
+async def poll_workspace(ctx: dict[str, Any], workspace_id: int, tries: int) -> str:
+    """Follow a starting Codespace closely for the first few minutes (reads only)."""
+    async with ctx["db"]() as db:
+        ws = await db.get(Workspace, workspace_id)
+        if ws is None or ws.status != workspaces.WORKING:
+            return "done"
+        token, _ = await _token_for(ctx, db, ws.user_id)
+        if token is None:
+            return "needs reconnecting"
+        async with _user_github(ctx, token) as gh:
+            state = await workspaces.check_codespace(db, ws, gh)
+        if ws.status == workspaces.WORKING and tries < POLL_TRIES:
+            await ctx["redis"].enqueue_job(
+                "poll_workspace", ws.id, tries + 1, _defer_by=POLL_EVERY_SECONDS
+            )
+        return state or "no codespace"
+
+
+async def check_workspaces(ctx: dict[str, Any]) -> int:
+    """Every few minutes: Codespace states, and pull requests opened on GitHub's own form.
+
+    Only reads. Stopping idle Codespaces and deleting old ones is left to GitHub
+    (idle timeout and retention period set when the Codespace was created).
+    """
+    async with ctx["db"]() as db:
+        rows = list(
+            await db.scalars(
+                select(Workspace).where(
+                    Workspace.status.in_((workspaces.WORKING, workspaces.READY))
+                )
+            )
+        )
+        checked = 0
+        tokens: dict[int, str | None] = {}
+        for ws in rows:
+            if ws.user_id not in tokens:
+                tokens[ws.user_id] = (await _token_for(ctx, db, ws.user_id))[0]
+            token = tokens[ws.user_id]
+            if token is None:
+                continue
+            async with _user_github(ctx, token) as gh:
+                if ws.codespace_name and ws.codespace_state != "Deleted":
+                    await workspaces.check_codespace(db, ws, gh)
+                if ws.status == workspaces.READY and ws.fork_full_name and ws.branch:
+                    pull = await gh.open_pull(
+                        ws.repo_full_name, f"{ws.fork_full_name.split('/')[0]}:{ws.branch}"
+                    )
+                    if pull:
+                        workspaces.record_pull(ws, pull)
+                        await db.commit()
+            checked += 1
+    return checked

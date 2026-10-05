@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: SecretStr = SecretStr("")
     token_keys: SecretStr = SecretStr("")
+    # Only changed to point at a fake GitHub in local end-to-end tests.
+    github_api_url: str = "https://api.github.com"
 
     # Personal syncs only run for people who used the site in this many days.
     active_days: int = 14

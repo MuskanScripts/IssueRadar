@@ -8,6 +8,7 @@ from typing import Any
 
 import fakeredis
 import pytest
+from fake_user_github import FakeUserGitHub
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Session as OrmSession
@@ -117,12 +118,25 @@ def sync_db(db_url: str) -> Iterator[OrmSession]:
 
 
 @pytest.fixture
+def user_github() -> FakeUserGitHub:
+    fake = FakeUserGitHub(login="ready")
+    fake.upstream("a/one")
+    return fake
+
+
+async def _no_sleep(_: float) -> None:
+    return None
+
+
+@pytest.fixture
 def box() -> TokenBox:
     return TokenBox(TokenBox.new_key())
 
 
 @pytest.fixture
-async def ctx(db_url: str, sync_db: OrmSession, box: TokenBox) -> AsyncIterator[dict[str, Any]]:
+async def ctx(
+    db_url: str, sync_db: OrmSession, box: TokenBox, user_github: FakeUserGitHub
+) -> AsyncIterator[dict[str, Any]]:
     engine = create_async_engine(db_url)
     yield {
         "settings": Settings(database_url=db_url),
@@ -132,5 +146,7 @@ async def ctx(db_url: str, sync_db: OrmSession, box: TokenBox) -> AsyncIterator[
         "box": box,
         "oauth": object(),  # tokens in these tests are fresh, so it is never called
         "redis": FakeQueue(),
+        "github_transport": user_github.transport(),
+        "sleep": _no_sleep,
     }
     await engine.dispose()
