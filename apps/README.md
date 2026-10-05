@@ -28,4 +28,4 @@ The test against real Postgres and Redis runs when `FIRSTPR_TEST_DATABASE_URL` a
 
 ## Why the CLI code has not moved
 
-The plan puts the shared engine in `packages/core`. Moving `src/issueradar` now would change the PyPI package, the GitHub Action and the Docker image for no gain yet, because nothing here uses the engine. It moves in Step 3, when the sync worker first imports it.
+The plan puts the shared engine in `packages/core`. Moving `src/issueradar` now would change the PyPI package, the GitHub Action and the Docker image for no gain yet, because nothing here uses the engine. It moves in the last part of Step 1, before the sync worker starts using it in Step 3.
