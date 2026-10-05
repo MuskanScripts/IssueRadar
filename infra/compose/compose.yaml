@@ -1,0 +1,59 @@
+# The FirstPR platform for local development: Postgres, Redis, the API and the worker.
+# This is separate from the root docker-compose.yml, which runs the self-hosted CLI dashboard.
+#
+#   docker compose -f infra/compose/compose.yaml up --build
+#
+# Then open http://localhost:8000/api/v1/health
+
+name: firstpr-platform
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: firstpr
+      POSTGRES_PASSWORD: firstpr   # local development only
+      POSTGRES_DB: firstpr
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U firstpr -d firstpr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      FIRSTPR_DATABASE_URL: postgresql+psycopg://firstpr:firstpr@postgres:5432/firstpr
+      FIRSTPR_REDIS_URL: redis://redis:6379/0
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      FIRSTPR_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres:

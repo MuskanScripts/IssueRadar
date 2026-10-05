@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "firstpr-api"
+version = "0.1.0"
+description = "The FirstPR platform API."
+license = "MIT"
+authors = [{ name = "Muskan" }]
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.30,<1",
+  "pydantic-settings>=2.4,<3",
+  "sqlalchemy[asyncio]>=2.0.30,<3",
+  "psycopg[binary]>=3.2,<4",
+  "redis>=5,<7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2,<10", "httpx>=0.27,<1", "mypy>=1.11,<3"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/firstpr_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["firstpr_api"]
+mypy_path = "src"
+plugins = ["pydantic.mypy"]

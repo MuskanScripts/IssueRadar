@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "firstpr-worker"
+version = "0.1.0"
+description = "Background jobs for the FirstPR platform."
+license = "MIT"
+authors = [{ name = "Muskan" }]
+requires-python = ">=3.11"
+dependencies = ["arq>=0.26,<1", "redis>=5,<7"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2,<10", "mypy>=1.11,<3"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/firstpr_worker"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["firstpr_worker"]
+mypy_path = "src"
