@@ -20,12 +20,14 @@ from firstpr_api import (
     notifications,
     profile,
     progress,
+    public,
     watches,
     webhooks,
     workspaces,
 )
 from firstpr_api.jobs import ArqJobs
 from firstpr_api.settings import Settings
+from firstpr_platform.analytics import Analytics
 from firstpr_platform.crypto import TokenBox
 from firstpr_platform.db import session_factory
 from firstpr_platform.github_oauth import GitHubOAuth
@@ -58,6 +60,7 @@ def create_app(
             db_engine, cache, settings.worker_stale_after_seconds
         )
         app.state.github_transport = github_transport
+        app.state.analytics = Analytics(settings.posthog_key, settings.posthog_host)
         app.state.token_box = None
         app.state.oauth = None
         if settings.sign_in_configured:
@@ -97,6 +100,7 @@ def create_app(
     v1.include_router(workspaces.router)
     v1.include_router(notifications.router)
     v1.include_router(progress.router)
+    v1.include_router(public.router)
     v1.include_router(admin.router)
     v1.include_router(webhooks.router)
     app.include_router(v1)

@@ -26,6 +26,7 @@ from firstpr_api.deps import Jobs, current_user, get_db, get_jobs, get_settings,
 from firstpr_api.settings import Settings
 from firstpr_platform import accounts, picks
 from firstpr_platform import workspaces as ws_flow
+from firstpr_platform.analytics import user_id
 from firstpr_platform.db import ACTIVE, IssueCard, Reservation, User, Workspace, utcnow
 from firstpr_platform.github_oauth import GitHubAuthError
 from firstpr_platform.github_user import GitHubError, UserGitHub
@@ -327,6 +328,9 @@ async def start_working(
     await picks.log(db, user.id, card, "issue", "started", picks.fit(card, taste, utcnow()))
     await db.commit()
     await jobs.enqueue_job("start_workspace", ws.id, _job_id=f"workspace:{ws.id}")
+    count = await db.scalar(select(func.count(Workspace.id)).where(Workspace.user_id == user.id))
+    if count == 1:
+        await request.app.state.analytics.capture("first_pick_started", user_id(user.id))
     return out(ws)
 
 

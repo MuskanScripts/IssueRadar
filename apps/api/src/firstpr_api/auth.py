@@ -17,6 +17,7 @@ from firstpr_api import sessions
 from firstpr_api.deps import current_user, get_db, get_redis, get_settings, require_csrf
 from firstpr_api.settings import Settings
 from firstpr_platform import accounts
+from firstpr_platform.analytics import Analytics, user_id
 from firstpr_platform.crypto import TokenBox
 from firstpr_platform.db import Profile, User
 from firstpr_platform.github_oauth import GitHubAuthError, GitHubOAuth, pkce_pair
@@ -26,6 +27,8 @@ STATE_PREFIX = "firstpr:oauth:"
 STATE_SECONDS = 600
 LOGIN_LIMIT_PREFIX = "firstpr:ratelimit:login:"
 DEFAULT_RETURN = "/home"
+# Set by the web page: a random id for a visitor who has not signed in yet.
+ANON_COOKIE = "firstpr_aid"
 
 router = APIRouter()
 
@@ -124,6 +127,9 @@ async def callback(
     # A new session on every sign-in; an old cookie on this browser is dropped.
     await sessions.revoke(db, redis, request.cookies.get(sessions.SESSION_COOKIE))
     raw = await sessions.create(db, redis, user.id, settings, request.headers.get("user-agent"))
+    analytics: Analytics = request.app.state.analytics
+    await analytics.identify(user.id, request.cookies.get(ANON_COOKIE))
+    await analytics.capture("signed_in", user_id(user.id))
     resp = RedirectResponse(safe_return(pending.get("return_to")), status_code=302)
     resp.delete_cookie(STATE_COOKIE, path="/api/v1/auth")
     sessions.set_cookies(resp, raw, settings)

@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     practice_repo: str = ""
     # Only used to tell people whether email is set up on this server (the worker sends).
     resend_api_key: SecretStr = SecretStr("")
+    # PostHog project key and host for the sign-up funnel. Empty: no analytics.
+    posthog_key: str = ""
+    posthog_host: str = "https://us.i.posthog.com"
     # Open pull requests a person can have waiting at once.
     max_open_prs: int = 3
 

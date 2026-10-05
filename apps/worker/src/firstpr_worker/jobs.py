@@ -18,6 +18,8 @@ from typing import Any
 from sqlalchemy import func, select
 
 from firstpr_platform import accounts, notify, picks, plan, progress, workspaces
+from firstpr_platform.analytics import Analytics
+from firstpr_platform.analytics import user_id as analytics_user
 from firstpr_platform.db import (
     CatalogueRepo,
     GitHubAccount,
@@ -31,6 +33,7 @@ from firstpr_platform.db import (
     Watch,
     WebhookEvent,
     Workspace,
+    XpTransaction,
     utcnow,
 )
 from firstpr_platform.github_user import GitHubError, UserGitHub
@@ -554,7 +557,9 @@ async def _store_pulls(
 
     notes: list[Notification] = []
     for reason, source, why in awards:
-        await progress.award(db, user_id, reason, source, why)
+        fresh = await progress.award(db, user_id, reason, source, why)
+        if fresh and reason == "pr_merged":
+            await _first_merge(ctx, db, user_id)
     if awards:
         notes += await _badges(db, user_id)
     for new, old, item in changes:
@@ -595,6 +600,18 @@ def _awards_for(item: Tracked, old: str | None, ws: Workspace | None) -> list[tu
     if new == "approved" and (ws is not None or seen_change):
         out.append(("pr_approved", f"{key}:approved", f"Approved: {name}"))
     return out
+
+
+async def _first_merge(ctx: dict[str, Any], db: Any, user_id: int) -> None:
+    """The last step of the sign-up funnel: the user's first merged pull request."""
+    merges = await db.scalar(
+        select(func.count(XpTransaction.id)).where(
+            XpTransaction.user_id == user_id, XpTransaction.reason == "pr_merged"
+        )
+    )
+    analytics: Analytics | None = ctx.get("analytics")
+    if merges == 1 and analytics is not None:
+        await analytics.capture("first_pr_merged", analytics_user(user_id))
 
 
 async def _badges(db: Any, user_id: int, best_streak: int | None = None) -> list[Notification]:

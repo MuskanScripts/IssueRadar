@@ -14,7 +14,11 @@ In front of them, a Caddy proxy (`infra/compose/Caddyfile`) puts everything on o
 
 | Route | Kind | What it shows today |
 |---|---|---|
-| `/` | Public, server-rendered, cached 30 seconds | Intro text and the platform status, fetched by the server from the API |
+| `/` | Public, server-rendered from data cached 5 minutes | The intro: live numbers, the stack picker (3 real issues and a locked fourth), six tiles, merged this week, questions |
+| `/trending` | Public, server-rendered | Four tabs: fresh issues, good first issues, active repos, merged this week |
+| `/i/<owner>/<repo>/<number>` | Public, cached 1 hour | An issue preview with a link-preview image; Start signs you in and lands on the full issue page |
+| `/u/<handle>` | Public, cached 1 hour, only for public profiles | Stats, calendar, badges, merged pull requests, with a link-preview image |
+| `/sitemap.xml`, `/robots.txt` | Public | Issue previews and public profiles; signed-in pages are kept out of search |
 | `/onboarding` | Signed in, client component | Three short, skippable steps: level, skills, starter packs. New people land here first |
 | `/home` | Signed in, client component | Today's pick, why it was picked, how long it is held, Show me another, today's minutes, streak, XP and a 17-week calendar |
 | `/explore` | Signed in, client component | Every open issue nobody holds, with filters, best fit / recently active / shuffled order, Load more, and Refresh |
@@ -162,6 +166,14 @@ Email goes through [Resend](https://resend.com) (`FIRSTPR_RESEND_API_KEY`, `FIRS
 There is no VS Code extension yet (it is a coming-soon placeholder).
 
 A day is **green** at 15 active minutes or a pushed commit. The **streak** is green days in a row; today counts once it is green. One missed day a week (Monday to Sunday) is bridged by a free **freeze** when the days on both sides are green; frozen days are marked on the calendar.
+
+## Public pages and analytics
+
+`/api/v1/public/*` serves the pages people see before signing in: `stats`, `issues?stack=` (the stack picker), `trending?tab=`, `issues/<owner>/<repo>/<number>`, `profiles/<handle>` and `sitemap`. Answers are cached in Redis for 5 minutes (an hour for the sitemap) and each IP address gets 120 requests a minute. Every number comes from the database. A profile is shown only when its owner switched it to public in Profile; a private one gets the same 404 as one that does not exist.
+
+The web app sets `SITE_URL` (the site's own address) for absolute links in the sitemap and in link previews (`og:image`, made per issue and per profile).
+
+The sign-up funnel goes to [PostHog](https://posthog.com) when `FIRSTPR_POSTHOG_KEY` is set (API and worker): `intro_viewed`, `stack_picker_used`, `sign_in_clicked` (sent by the page through `POST /api/v1/public/events`, under a random id in the `firstpr_aid` cookie), `signed_in` (which links that id to the user), `first_pick_started` and `first_pr_merged`. Events carry ids only; no names, emails or tokens.
 
 ## Admin
 
