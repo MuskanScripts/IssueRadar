@@ -59,6 +59,7 @@ services:
       FIRSTPR_DATABASE_URL: postgresql+psycopg://firstpr:firstpr@postgres:5432/firstpr
       FIRSTPR_CATALOGUE_DATABASE_URL: postgresql+psycopg://firstpr:firstpr@postgres:5432/firstpr_catalogue
       FIRSTPR_REDIS_URL: redis://redis:6379/0
+      FIRSTPR_PUBLIC_URL: http://localhost:8080   # for links in emails
     # The GitHub App's ID and private key, and the same keys as the API.
     env_file:
       - path: .env

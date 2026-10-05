@@ -76,3 +76,25 @@ async def test_cards_carry_the_engines_verdicts(catalogue_url: str) -> None:
     sample = cards[0]
     assert sample.tier in {"beginner", "intermediate", "pro"} and sample.time_bucket
     assert sample.checklist and sample.availability_reasons
+
+
+async def test_tracking_reads_recorded_pull_requests(catalogue_url: str) -> None:
+    from test_prs import REPO as PR_REPO
+    from test_prs import serve_pr
+
+    fake = FakeGitHub()
+    recorded = serve_pr(fake, 16)
+    serve_pr(fake, 14)
+    catalogue = Catalogue(catalogue_url, pause_share=0.2, transport=fake.transport())
+    result = await catalogue.track(
+        "ghu_token",
+        "user:1",
+        "MuskanScripts",
+        [(PR_REPO, 16), (PR_REPO, 14)],
+        discover=False,
+        now=recorded,
+    )
+    assert result.failed == {}
+    statuses = {t.facts.number: t.status.status.value for t in result.pulls}
+    assert statuses == {16: "waiting_for_review", 14: "merged"}
+    assert all(r.method == "GET" for r in fake.requests)

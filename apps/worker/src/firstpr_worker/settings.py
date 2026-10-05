@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     # Only changed to point at a fake GitHub in local end-to-end tests.
     github_api_url: str = "https://api.github.com"
 
+    # Email through Resend (https://resend.com). Without a key no email is sent.
+    resend_api_key: SecretStr = SecretStr("")
+    email_from: str = "FirstPR <hello@example.com>"
+    # Only changed to point at a fake in local end-to-end tests.
+    resend_url: str = "https://api.resend.com/emails"
+    # Where people reach the site, for links in emails.
+    public_url: str = "http://localhost:8080"
+
     # Personal syncs only run for people who used the site in this many days.
     active_days: int = 14
     # Stop starting new requests when this share of a token's hourly limit is left.

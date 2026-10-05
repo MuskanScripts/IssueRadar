@@ -284,3 +284,39 @@ export type PullDraft = { title: string; body: string; base: string; head: strin
 export type PullResult = { opened: boolean; manual_url: string | null; workspace: Workspace };
 
 export const workspacePath = (ws: { id: number }) => `/workspaces/${ws.id}`;
+
+export type Pull = {
+  repo: string;
+  number: number;
+  title: string;
+  url: string | null;
+  status: string;
+  status_label: string;
+  needs_you: boolean;
+  what_to_do: string;
+  reasons: string[];
+  nudge: string | null;
+  days_quiet: number;
+  draft: boolean;
+  opened_at: string | null;
+  closed_at: string | null;
+  timeline: { at: string; text: string }[];
+  checked_at: string;
+};
+
+export type Pulls = { items: Pull[]; checked_at: string | null; next_refresh_at: string | null };
+
+export type NotificationItem = {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  link: string | null;
+  external_url: string | null;
+  created_at: string;
+  read: boolean;
+};
+
+export type Notifications = { items: NotificationItem[]; unread: number };
+
+export type EmailSettings = { address: string | null; enabled: boolean; digest: boolean; sending: boolean };

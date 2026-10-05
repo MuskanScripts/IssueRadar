@@ -20,6 +20,9 @@ from issueradar.engine import coach
 from issueradar.engine.rules import RepoRules, load_packs, load_rules
 from issueradar.engine.text import file_paths
 from issueradar.github import GitHubClient
+from issueradar.github.errors import GitHubError, QuotaExhausted
+from issueradar.prs.status import Activity, PullFacts, PullStatus, derive, nudge
+from issueradar.prs.tracker import PullTracker
 from issueradar.radar import Preloaded, Radar, repo_stack
 from issueradar.storage.db import Database, open_database
 from issueradar.storage.etag_cache import SqlEtagCache
@@ -77,6 +80,20 @@ class Card:
     repo_notes: str | None = None
 
 
+@dataclass
+class Tracked:
+    facts: PullFacts
+    status: PullStatus
+    nudge: str | None
+    activity: list[Activity]
+
+
+@dataclass
+class TrackResult:
+    pulls: list[Tracked] = field(default_factory=list)
+    failed: dict[str, str] = field(default_factory=dict)
+
+
 def pack_repos() -> list[str]:
     """Every repo in the starter packs: the first catalogue."""
     seen: dict[str, str] = {}
@@ -88,14 +105,24 @@ def pack_repos() -> list[str]:
 
 class Catalogue:
     def __init__(
-        self, url: str, pause_share: float, transport: httpx.AsyncBaseTransport | None = None
+        self,
+        url: str,
+        pause_share: float,
+        transport: httpx.AsyncBaseTransport | None = None,
+        api_url: str | None = None,
     ) -> None:
         self.db: Database = open_database(url)
         self.transport = transport  # tests point the engine at a fake GitHub
         base = load_settings()
         budget = base.github.budget.model_copy(update={"safety_margin": pause_share})
+        github: dict[str, Any] = {"budget": budget}
+        if api_url:  # only changed to point at a fake GitHub in local end-to-end tests
+            github |= {
+                "api_url": api_url.rstrip("/"),
+                "graphql_url": f"{api_url.rstrip('/')}/graphql",
+            }
         self.settings: Settings = base.model_copy(
-            update={"github": base.github.model_copy(update={"budget": budget})}
+            update={"github": base.github.model_copy(update=github)}
         )
         self.rules: dict[str, RepoRules] = load_rules()
 
@@ -213,3 +240,48 @@ class Catalogue:
                         )
                     )
         return out
+
+    async def track(
+        self,
+        token: str,
+        cache_identity: str,
+        login: str,
+        known: list[tuple[str, int]],
+        *,
+        discover: bool,
+        now: datetime,
+    ) -> TrackResult:
+        """The status of a user's pull requests, with their own token (reads only).
+
+        `known` are pull requests FirstPR already tracks; `discover` also searches
+        GitHub for the user's other public pull requests of the last 90 days.
+        """
+        result = TrackResult()
+        async with GitHubClient(
+            self.settings.github,
+            token,
+            cache=SqlEtagCache(self.db.sessions),
+            cache_identity=cache_identity,
+            transport=self.transport,
+        ) as client:
+            tracker = PullTracker(self.db, client, self.settings, self.rules, clock=lambda: now)
+            pairs = {(r.lower(), n): (r, n) for r, n in known}
+            if discover:
+                try:
+                    for repo, number in await tracker.discover(login, public_only=True):
+                        pairs.setdefault((repo.lower(), number), (repo, number))
+                except GitHubError as exc:
+                    result.failed["search"] = str(exc)
+            for repo, number in pairs.values():
+                try:
+                    facts, activity = await tracker.facts(repo, number)
+                except QuotaExhausted:
+                    raise
+                except GitHubError as exc:
+                    result.failed[f"{repo}#{number}"] = str(exc)
+                    continue
+                if facts.author.lower() != login.lower():
+                    continue
+                status = derive(facts, now, self.settings.pull_requests.stale_days)
+                result.pulls.append(Tracked(facts, status, nudge(facts, status), activity))
+        return result

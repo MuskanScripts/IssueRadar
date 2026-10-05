@@ -6,7 +6,9 @@ later it queues a personal sync for each active user with repos of their own.
 After each sync it rebuilds the issue cards the API reads, and every 15
 minutes it holds a daily pick for active users whose local day has none yet.
 Workspaces are set up when a user clicks Start working, and every 5 minutes
-their Codespaces and pull requests are checked (reads only).
+their Codespaces and pull requests are checked (reads only). Every 2 hours it
+works out the status of everyone's pull requests, notifying them of changes,
+and every hour it sends the 8 o'clock digest to whoever is at 8 o'clock.
 Webhooks from GitHub are handled as they arrive.
 """
 
@@ -24,6 +26,7 @@ from firstpr_platform.crypto import TokenBox
 from firstpr_platform.db import session_factory
 from firstpr_platform.github_app import AppTokenSource
 from firstpr_platform.github_oauth import GitHubOAuth
+from firstpr_platform.notify import Mailer, signing_key
 from firstpr_worker.catalogue import Catalogue
 from firstpr_worker.jobs import (
     cards_if_empty,
@@ -33,10 +36,14 @@ from firstpr_worker.jobs import (
     poll_workspace,
     refresh_cards,
     seed_catalogue,
+    send_digests,
     start_workspace,
     sync_active_users,
     sync_catalogue,
     sync_user,
+    track_active_users,
+    track_pull,
+    track_user,
 )
 from firstpr_worker.settings import Settings
 
@@ -57,7 +64,11 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["settings"] = settings
     ctx["engine"] = engine
     ctx["db"] = session_factory(engine)
-    ctx["catalogue"] = Catalogue(settings.catalogue_database_url, settings.budget_pause_share)
+    ctx["catalogue"] = Catalogue(
+        settings.catalogue_database_url,
+        settings.budget_pause_share,
+        api_url=settings.github_api_url,
+    )
     ctx["app_tokens"] = None
     if settings.app_configured:
         ctx["app_tokens"] = AppTokenSource(
@@ -74,6 +85,13 @@ async def startup(ctx: dict[str, Any]) -> None:
             settings.github_client_secret.get_secret_value(),
             redirect_uri="",  # only used for refreshing tokens here
         )
+    ctx["mailer"] = Mailer(
+        settings.resend_api_key.get_secret_value(),
+        settings.email_from,
+        settings.public_url,
+        signing_key(settings.token_keys.get_secret_value()),
+        api_url=settings.resend_url,
+    )
     await heartbeat(ctx)
     await seed_catalogue(ctx)
     await cards_if_empty(ctx)
@@ -102,6 +120,10 @@ class WorkerSettings:
         func(start_workspace, keep_result=0, max_tries=1, timeout=10 * 60),
         func(poll_workspace, keep_result=0, max_tries=1),
         func(check_workspaces, keep_result=0, timeout=10 * 60),
+        func(track_user, keep_result=0, timeout=10 * 60),
+        func(track_pull, keep_result=0),
+        func(track_active_users, keep_result=0),
+        func(send_digests, keep_result=0, timeout=10 * 60),
     ]
     cron_jobs: ClassVar = [
         cron(heartbeat, second=0, run_at_startup=False),
@@ -109,6 +131,15 @@ class WorkerSettings:
         cron(sync_active_users, minute={15, 45}, second=10, unique=True, keep_result=0),
         cron(make_daily_picks, minute={5, 20, 35, 50}, second=10, unique=True, keep_result=0),
         cron(check_workspaces, minute=set(range(2, 60, 5)), second=0, unique=True, keep_result=0),
+        cron(
+            track_active_users,
+            hour=set(range(0, 24, 2)),
+            minute=40,
+            second=0,
+            unique=True,
+            keep_result=0,
+        ),
+        cron(send_digests, minute=25, second=0, unique=True, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

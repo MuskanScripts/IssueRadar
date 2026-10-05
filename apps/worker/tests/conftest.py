@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from firstpr_platform.crypto import TokenBox
 from firstpr_platform.db import Base, session_factory
-from firstpr_worker.catalogue import Card, SyncResult
+from firstpr_worker.catalogue import Card, SyncResult, Tracked, TrackResult
 from firstpr_worker.settings import Settings
 from issueradar.sync.service import RepoOutcome
 
@@ -60,6 +60,22 @@ class FakeCatalogue:
         self.interrupt_after: int | None = None
         # What cards() returns for each repo; repos not listed have no open issues.
         self.issues: dict[str, list[Card]] = {}
+        self.pulls: list[Tracked] = []
+        self.track_calls: list[tuple[str, list[tuple[str, int]], bool]] = []
+
+    async def track(
+        self,
+        token: str,
+        identity: str,
+        login: str,
+        known: list[tuple[str, int]],
+        *,
+        discover: bool,
+        now: Any,
+    ) -> TrackResult:
+        """Pull request statuses: whatever the test put in `self.pulls`."""
+        self.track_calls.append((login, list(known), discover))
+        return TrackResult(pulls=list(self.pulls))
 
     def cards(self, repos: set[str]) -> dict[str, list[Card]]:
         return {name: list(self.issues.get(name, [])) for name in repos}

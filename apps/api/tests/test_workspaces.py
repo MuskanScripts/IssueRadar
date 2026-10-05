@@ -113,7 +113,7 @@ def test_taken_issues_cannot_be_started(ready: TestClient, sync_db: OrmSession) 
 
 
 def test_live_steps_stream_and_the_whole_way_to_a_pull_request(
-    ready: TestClient, sync_db: OrmSession, github: FakeGitHub
+    ready: TestClient, sync_db: OrmSession, github: FakeGitHub, jobs: FakeJobs
 ) -> None:
     ws_id = start(ready).json()["id"]
     run_worker(sync_db, github, ws_id)
@@ -148,6 +148,9 @@ def test_live_steps_stream_and_the_whole_way_to_a_pull_request(
     assert opened["opened"] and opened["workspace"]["status"] == "pr_open"
     assert opened["workspace"]["pull_request"]["url"].endswith("/pull/100")
     assert github.work.writes[writes_before:] == [("POST", "/repos/pallets/flask/pulls")]
+    # It shows on My pull requests right away.
+    function, args, _ = jobs.queued[-1]
+    assert function == "track_pull" and args[1:] == (REPO, 100)
     # Clicking again does not open a second one.
     again = ready.post(
         f"/api/v1/workspaces/{ws_id}/pull-request", json=pull, headers=csrf(ready)
@@ -212,6 +215,7 @@ def test_practice_first_and_at_most_three_open(
                 issue_title="x",
                 mode="local",
                 status="pr_open",
+                pr_state="open",
                 steps=[],
                 pr_url=f"https://x/{n}",
             )

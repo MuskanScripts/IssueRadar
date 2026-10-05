@@ -21,6 +21,10 @@ In front of them, a Caddy proxy (`infra/compose/Caddyfile`) puts everything on o
 | `/issues/<owner>/<repo>/<number>` | Signed in, client component | Why it is free, why it suits you, what to do first, repo health; checked live on GitHub when our copy is over 10 minutes old |
 | `/workspaces` | Signed in, client component | My work: the issues you started, with their state, and the practice-repo rule |
 | `/workspaces/<id>` | Signed in, client component | The setup steps live, Open your Codespace or clone instructions, I finished (commits and files), and the Create pull request form |
+| `/pulls` | Signed in, client component | My pull requests: Needs you, Waiting on others, Done, with what to do, recent activity, a nudge to copy for quiet ones, and Check now |
+| `/notifications` | Signed in, client component | Everything FirstPR told you; the bell in the menu shows the unread count live |
+| `/settings` | Signed in, client component | Email on or off, the daily digest, and a link to change level and skills |
+| `/email-off` | Public | Where the unsubscribe link in every email lands |
 | `/leaderboard`, `/paths` | Signed in, client component | Coming-soon placeholders with an "I want this" button |
 | `/profile` | Signed in, client component | Your GitHub account, its connection status, a link to change level and skills, and Sign out |
 | `/admin` | Admins only, client component | Every synced repo with its token, watchers and last result, the GitHub budgets, webhooks, and adding or removing catalogue repos |
@@ -119,6 +123,28 @@ Rules:
 - At most 3 open pull requests at a time (`FIRSTPR_MAX_OPEN_PRS`).
 - When `FIRSTPR_PRACTICE_REPO` is set (for example a repo of easy practice issues you own and add to the catalogue), a person's first pull request has to go there before they can open one on a real project. Empty turns the rule off.
 - **No GitHub write without a click.** Forking, syncing the fork, creating the branch and the Codespace, opening the pull request and deleting the Codespace all go through one `_write` method in `firstpr_platform.github_user`, called only from the user's own POST (Start working, Try again, Create pull request, Stop working). Scheduled jobs only read: every 5 minutes the worker checks Codespace states and looks for pull requests opened on GitHub's form. A test runs every scheduled job and checks GitHub saw no writes. GitHub itself stops idle Codespaces and deletes old ones, so FirstPR never has to.
+
+## Pull requests and notifications
+
+The worker tracks each user's pull requests with their own token and the engine's PR tracker (`packages/core`, the same status rules as the CLI): the ones opened through FirstPR, and a search for their other public pull requests of the last 90 days. Private repos are never searched.
+
+| When | What |
+|---|---|
+| Every 2 hours | Everyone active in the last 14 days |
+| A few seconds after a webhook | The one pull request it is about (reviews, comments, checks, pushes); only for repos where the app is installed, such as your practice repo |
+| Right after Create pull request | That pull request |
+| Check now on My PRs | The user's pull requests, at most once in 5 minutes |
+
+A change of status becomes a notification: merged, changes requested, checks failing, merge conflict, approved, gone quiet (with a nudge drafted to copy, never posted), closed. The first time a pull request is seen is not news. Workspace problems (setup stopped, or no Codespace) are notifications too. The same change never makes two notifications, even when GitHub sends a webhook twice.
+
+The bell in the menu follows `/api/v1/me/notifications/stream` (server-sent events) for a live unread count. The proxy does not compress `/api`, and Next.js does not compress either, so the stream is not held back.
+
+Email goes through [Resend](https://resend.com) (`FIRSTPR_RESEND_API_KEY`, `FIRSTPR_EMAIL_FROM` on a domain you verified there). Without a key nothing is sent.
+
+- Straight away: merged, changes requested, workspace problems.
+- Everything else waits for the daily digest at 8 in the morning in the user's time zone, sent only on days with something new.
+- Every email goes through one function that checks the user's switch first, so turning email off in Settings stops every email.
+- Every email has a one-click unsubscribe link (signed with a key derived from `FIRSTPR_TOKEN_KEYS`) and the `List-Unsubscribe` headers mail apps use for their own Unsubscribe button.
 
 ## Admin
 
