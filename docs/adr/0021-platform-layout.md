@@ -28,3 +28,8 @@ The CLI and the platform share one engine and one set of tests. Paths in docs
 and configs now point into `packages/core`. The API and worker will depend on
 the `firstpr` package (installed from `packages/core` in development) when they
 start using the engine.
+
+Update (Step 3): code both the API and the worker need (tables, migrations,
+GitHub sign-in, the app's installation token) lives in `packages/platform`
+(`firstpr_platform`), because the import rules keep the two apps apart. The
+worker runs the engine against its own database, `firstpr_catalogue`.

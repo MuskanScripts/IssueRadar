@@ -28,7 +28,8 @@ def test_heartbeat_writes_the_time_with_an_expiry() -> None:
     assert ttl == HEARTBEAT_TTL_SECONDS
 
 
-def test_heartbeat_runs_every_minute() -> None:
-    (job,) = WorkerSettings.cron_jobs
-    assert job.coroutine is heartbeat
-    assert job.second == 0 and job.minute is None
+def test_schedule() -> None:
+    jobs = {job.coroutine.__name__: job for job in WorkerSettings.cron_jobs}
+    assert jobs["heartbeat"].second == 0 and jobs["heartbeat"].minute is None
+    assert jobs["sync_catalogue"].minute == {0, 30}
+    assert jobs["sync_active_users"].minute == {15, 45}

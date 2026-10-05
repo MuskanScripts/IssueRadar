@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     github_verify_every_seconds: int = 300
     # Sign-in attempts per IP address in 10 minutes.
     login_attempts_per_10_minutes: int = 20
+    # GitHub logins (comma-separated) that get the admin pages.
+    admin_logins: str = ""
+    # Shared secret for GitHub webhook deliveries. Webhooks are refused until it is set.
+    github_webhook_secret: SecretStr = SecretStr("")
+    # How many repos one person can watch.
+    max_watches_per_user: int = 50
+
+    @property
+    def admin_login_set(self) -> frozenset[str]:
+        return frozenset(x.strip().lower() for x in self.admin_logins.split(",") if x.strip())
 
     @property
     def callback_url(self) -> str:

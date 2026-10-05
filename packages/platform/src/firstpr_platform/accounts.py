@@ -8,9 +8,9 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from firstpr_api.crypto import TokenBox
-from firstpr_api.db import GitHubAccount, User, utcnow
-from firstpr_api.github_oauth import GitHubAuthError, GitHubOAuth, GitHubUser, Tokens
+from firstpr_platform.crypto import TokenBox
+from firstpr_platform.db import GitHubAccount, User, utcnow
+from firstpr_platform.github_oauth import GitHubAuthError, GitHubOAuth, GitHubUser, Tokens
 
 CONNECTED = "connected"
 RECONNECT_NEEDED = "reconnect_needed"
@@ -25,7 +25,13 @@ def _store_tokens(account: GitHubAccount, tokens: Tokens, box: TokenBox) -> None
     account.refresh_expires_at = tokens.refresh_expires_at
 
 
-async def upsert(db: AsyncSession, gh: GitHubUser, tokens: Tokens, box: TokenBox) -> User:
+async def upsert(
+    db: AsyncSession,
+    gh: GitHubUser,
+    tokens: Tokens,
+    box: TokenBox,
+    admin_logins: frozenset[str] = frozenset(),
+) -> User:
     account = await db.scalar(select(GitHubAccount).where(GitHubAccount.github_id == gh.id))
     if account is None:
         user = User(handle=gh.login, name=gh.name, email=gh.email, avatar_url=gh.avatar_url)
@@ -39,6 +45,8 @@ async def upsert(db: AsyncSession, gh: GitHubUser, tokens: Tokens, box: TokenBox
     _store_tokens(account, tokens, box)
     account.status = CONNECTED
     account.last_verified_at = utcnow()
+    # Checked on every sign-in, so removing a login from the list takes the role away.
+    user.role = "admin" if gh.login.lower() in admin_logins else "user"
     await db.commit()
     return user
 

@@ -15,6 +15,8 @@ All notable changes to this project are documented here. The format follows
 - The start of the hosted platform in `apps/`: a FastAPI app with a health check, an Arq worker, a Next.js web app, a Caddy proxy and a Compose file that runs them together.
 - Import rules (`.importlinter`) checked in CI.
 - Platform sign-in with GitHub: a GitHub App user-authorization flow with state and PKCE, encrypted GitHub tokens, server-side sessions behind an HTTP-only cookie, CSRF checks on writes, token refresh, and a reconnect banner when GitHub access stops working. The web app has a sign-in button, a signed-in area and a profile page with Sign out.
+- Platform sync: the worker syncs the shared catalogue (seeded from the starter packs) with the GitHub App's installation token, and repos only one person watches with that person's own token. GitHub webhooks are checked, stored once and handled by the worker. People can watch public repos through `/api/v1/me/watches`; admins get a sync overview at `/admin`. Shared platform code moved to `packages/platform`.
+- The engine's GitHub client takes an optional `cache_identity`, so ETags keep working when a token rotates.
 
 ## [0.2.0] - 2026-10-03
 

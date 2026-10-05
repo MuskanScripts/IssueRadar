@@ -14,7 +14,25 @@ export type Me = {
   name: string | null;
   email: string | null;
   avatar_url: string | null;
+  role: "user" | "admin";
   github: { login: string; status: "connected" | "reconnect_needed" };
+};
+
+export type SyncOverview = {
+  worker: string;
+  budgets: Record<string, { limit: number | null; remaining: number | null; paused: boolean; checked_at?: number }>;
+  webhooks_last_hour: number;
+  webhooks_waiting: number;
+  repos: {
+    full_name: string;
+    token: "app" | "user";
+    watchers: number;
+    in_catalogue: boolean;
+    status: string | null;
+    note: string | null;
+    open_issues: number | null;
+    synced_at: string | null;
+  }[];
 };
 
 export const serverApiUrl = () => process.env.API_INTERNAL_URL ?? "http://localhost:8000";
@@ -42,11 +60,26 @@ function csrfToken(): string {
   return match ? decodeURIComponent(match[1]) : "";
 }
 
-/** POST with the CSRF header every write needs. */
-export async function post(path: string): Promise<Response> {
+/** A write (POST or DELETE) with the CSRF header every write needs. */
+export async function send(
+  path: string,
+  { method = "POST", json }: { method?: "POST" | "DELETE"; json?: unknown } = {},
+): Promise<Response> {
+  const headers: Record<string, string> = { "X-CSRF-Token": csrfToken() };
+  if (json !== undefined) headers["Content-Type"] = "application/json";
   return fetch(path, {
-    method: "POST",
+    method,
     credentials: "same-origin",
-    headers: { "X-CSRF-Token": csrfToken() },
+    headers,
+    body: json === undefined ? undefined : JSON.stringify(json),
   });
+}
+
+export const post = (path: string) => send(path);
+
+export async function getSyncOverview(): Promise<SyncOverview> {
+  const resp = await fetch("/api/v1/admin/sync", { cache: "no-store", credentials: "same-origin" });
+  if (resp.status === 403) throw new Error("This page is for admins.");
+  if (!resp.ok) throw new Error(`Could not load the sync overview (${resp.status})`);
+  return (await resp.json()) as SyncOverview;
 }

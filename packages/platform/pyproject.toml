@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "firstpr-platform"
+version = "0.1.0"
+description = "Shared code for the FirstPR platform: database tables, migrations, GitHub sign-in and app tokens."
+license = "MIT"
+authors = [{ name = "Muskan" }]
+requires-python = ">=3.11"
+dependencies = [
+  "sqlalchemy[asyncio]>=2.0.30,<3",
+  "psycopg[binary]>=3.2,<4",
+  "alembic>=1.13,<2",
+  "cryptography>=43",
+  "httpx>=0.27,<1",
+  "pyjwt[crypto]>=2.8,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2,<10", "pytest-asyncio>=0.24,<2", "mypy>=1.11,<3", "aiosqlite>=0.20,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/firstpr_platform"]
+
+# The migrations ship inside the wheel so containers can run them.
+[tool.hatch.build.targets.wheel.force-include]
+"migrations" = "firstpr_platform/migrations"
+"alembic.ini" = "firstpr_platform/alembic.ini"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["firstpr_platform"]
+mypy_path = "src"

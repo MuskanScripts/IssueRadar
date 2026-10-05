@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 
 import httpx
 
-from firstpr_api.db import utcnow
+from firstpr_platform.db import utcnow
 
 GITHUB_URL = "https://github.com"
 API_URL = "https://api.github.com"
@@ -118,6 +118,23 @@ class GitHubOAuth:
         return await self._token_request(
             {"grant_type": "refresh_token", "refresh_token": refresh_token}
         )
+
+    async def get_repo(self, access_token: str, full_name: str) -> dict[str, Any] | None:
+        """The repo as GitHub describes it to this user, or None if it does not exist."""
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        async with self._client() as client:
+            resp = await client.get(f"{self._api}/repos/{full_name}", headers=headers)
+        if resp.status_code == 404:
+            return None
+        if resp.status_code == 401:
+            raise GitHubAuthError("token no longer valid")
+        resp.raise_for_status()
+        data: dict[str, Any] = resp.json()
+        return data
 
     async def get_user(self, access_token: str) -> GitHubUser:
         headers = {

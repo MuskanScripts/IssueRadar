@@ -9,10 +9,24 @@ description = "Background jobs for the FirstPR platform."
 license = "MIT"
 authors = [{ name = "Muskan" }]
 requires-python = ">=3.11"
-dependencies = ["arq>=0.26,<1", "redis>=5,<7"]
+dependencies = [
+  "arq>=0.26,<1",
+  "redis>=5,<7",
+  "pydantic-settings>=2.4,<3",
+  "sqlalchemy[asyncio]>=2.0.30,<3",
+  # The engine (packages/core) and the shared platform code (packages/platform).
+  "firstpr",
+  "firstpr-platform",
+]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.2,<10", "mypy>=1.11,<3"]
+dev = [
+  "pytest>=8.2,<10",
+  "pytest-asyncio>=0.24,<2",
+  "mypy>=1.11,<3",
+  "fakeredis>=2.26,<3",
+  "aiosqlite>=0.20,<1",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/firstpr_worker"]
@@ -20,9 +34,12 @@ packages = ["src/firstpr_worker"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
 packages = ["firstpr_worker"]
 mypy_path = "src"
+plugins = ["pydantic.mypy"]

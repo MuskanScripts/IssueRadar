@@ -16,6 +16,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link href="/home" className="text-ink-2 hover:text-ink">
                 Home
               </Link>
+              {me.role === "admin" ? (
+                <Link href="/admin" className="text-ink-2 hover:text-ink">
+                  Admin
+                </Link>
+              ) : null}
               <Link
                 href="/profile"
                 className="ml-auto flex items-center gap-2 rounded-md px-2 py-1 hover:bg-surface"

@@ -98,11 +98,15 @@ class GitHubClient:
         transport: httpx.AsyncBaseTransport | None = None,
         sleep: Sleep = asyncio.sleep,
         clock: Callable[[], float] = time.time,
+        cache_identity: str | None = None,
     ) -> None:
         self.settings = settings
         self.budget = budget or ApiBudget(settings.budget.safety_margin)
         self.cache: EtagCache = cache or MemoryEtagCache()
-        self._fingerprint = token_fingerprint(token)
+        # Cached answers are kept apart per token. A caller whose token rotates (the
+        # hosted app's hourly installation token) passes a stable identity instead,
+        # so its ETags keep working after each rotation.
+        self._fingerprint = cache_identity or token_fingerprint(token)
         self._sleep = sleep
         self._clock = clock
         headers = {

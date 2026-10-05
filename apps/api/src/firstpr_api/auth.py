@@ -13,12 +13,13 @@ from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from firstpr_api import accounts, sessions
-from firstpr_api.crypto import TokenBox
-from firstpr_api.db import User
+from firstpr_api import sessions
 from firstpr_api.deps import current_user, get_db, get_redis, get_settings, require_csrf
-from firstpr_api.github_oauth import GitHubAuthError, GitHubOAuth, pkce_pair
 from firstpr_api.settings import Settings
+from firstpr_platform import accounts
+from firstpr_platform.crypto import TokenBox
+from firstpr_platform.db import User
+from firstpr_platform.github_oauth import GitHubAuthError, GitHubOAuth, pkce_pair
 
 STATE_COOKIE = "firstpr_oauth"
 STATE_PREFIX = "firstpr:oauth:"
@@ -119,7 +120,7 @@ async def callback(
     except (GitHubAuthError, httpx.HTTPError):
         return back("failed")
 
-    user = await accounts.upsert(db, gh, tokens, box)
+    user = await accounts.upsert(db, gh, tokens, box, settings.admin_login_set)
     # A new session on every sign-in; an old cookie on this browser is dropped.
     await sessions.revoke(db, redis, request.cookies.get(sessions.SESSION_COOKIE))
     raw = await sessions.create(db, redis, user.id, settings, request.headers.get("user-agent"))
@@ -153,6 +154,7 @@ class Me(BaseModel):
     name: str | None
     email: str | None
     avatar_url: str | None
+    role: Literal["user", "admin"]
     github: GitHubStatus
 
 
@@ -178,5 +180,6 @@ async def me(
         name=user.name,
         email=user.email,
         avatar_url=user.avatar_url,
+        role="admin" if user.role == "admin" else "user",
         github=GitHubStatus(login=account.login, status=status),
     )
