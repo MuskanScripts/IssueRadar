@@ -10,20 +10,23 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+import zlib
 from dataclasses import asdict
 from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import func, select
 
-from firstpr_platform import accounts, picks, plan, workspaces
+from firstpr_platform import accounts, notify, picks, plan, workspaces
 from firstpr_platform.db import (
     CatalogueRepo,
     GitHubAccount,
     IssueCard,
+    Notification,
     Profile,
     RepoSync,
     Session,
+    TrackedPull,
     User,
     Watch,
     WebhookEvent,
@@ -31,13 +34,32 @@ from firstpr_platform.db import (
     utcnow,
 )
 from firstpr_platform.github_user import UserGitHub
-from firstpr_worker.catalogue import APP_OWNER, Card, SyncResult, engine_user_id, pack_repos
+from firstpr_worker.catalogue import (
+    APP_OWNER,
+    Card,
+    SyncResult,
+    Tracked,
+    engine_user_id,
+    pack_repos,
+)
 
 # Must match BUDGET_PREFIX in apps/api.
 BUDGET_PREFIX = "firstpr:budget:"
 BUDGET_TTL_SECONDS = 2 * 3600
 REPO_EVENTS = {"issues", "issue_comment", "pull_request", "pull_request_review", "repository"}
+# Events that can change a pull request's status.
+PULL_EVENTS = {
+    "pull_request",
+    "pull_request_review",
+    "pull_request_review_comment",
+    "issue_comment",
+    "check_suite",
+    "check_run",
+    "status",
+}
 SOON_SECONDS = 60
+# A review should show up in FirstPR within a minute of the webhook.
+PULL_SOON_SECONDS = 5
 
 
 async def seed_catalogue(ctx: dict[str, Any]) -> int:
@@ -218,6 +240,50 @@ async def sync_active_users(ctx: dict[str, Any]) -> int:
     return len(ids)
 
 
+def _pull_numbers(event: WebhookEvent) -> set[int]:
+    """Which pull requests a delivery is about. Empty means "any in this repo"."""
+    try:
+        payload = json.loads(event.payload)
+    except ValueError:
+        return set()
+    if event.event in ("pull_request", "pull_request_review", "pull_request_review_comment"):
+        number = (payload.get("pull_request") or {}).get("number")
+        return {int(number)} if number else set()
+    if event.event == "issue_comment":
+        issue = payload.get("issue") or {}
+        # Comments on pull requests come as issue comments with a "pull_request" key.
+        is_pull = "pull_request" in issue and issue.get("number")
+        return {int(issue["number"])} if is_pull else set()
+    if event.event in ("check_suite", "check_run"):
+        holder = payload.get(event.event) or {}
+        return {int(p["number"]) for p in holder.get("pull_requests") or [] if p.get("number")}
+    return set()
+
+
+async def _queue_tracked_pulls(ctx: dict[str, Any], db: Any, event: WebhookEvent) -> int:
+    """Check tracked pull requests this delivery is about, a few seconds from now."""
+    numbers = _pull_numbers(event)
+    query = select(TrackedPull).where(
+        func.lower(TrackedPull.repo_full_name) == (event.repo_full_name or "").lower(),
+        TrackedPull.state == "open",
+    )
+    if numbers:
+        query = query.where(TrackedPull.number.in_(numbers))
+    elif event.event != "status":
+        return 0
+    rows = list(await db.scalars(query))
+    for row in rows:
+        await ctx["redis"].enqueue_job(
+            "track_pull",
+            row.user_id,
+            row.repo_full_name,
+            row.number,
+            _job_id=f"track-pull:{row.user_id}:{row.repo_full_name.lower()}#{row.number}",
+            _defer_by=PULL_SOON_SECONDS,
+        )
+    return len(rows)
+
+
 async def handle_webhook(ctx: dict[str, Any], delivery_id: str) -> str:
     async with ctx["db"]() as db:
         event = await db.get(WebhookEvent, delivery_id)
@@ -231,6 +297,12 @@ async def handle_webhook(ctx: dict[str, Any], delivery_id: str) -> str:
             if account is not None:
                 account.status = accounts.RECONNECT_NEEDED
                 result = "account marked reconnect needed"
+        elif (
+            event.event in PULL_EVENTS
+            and event.repo_full_name
+            and (queued := await _queue_tracked_pulls(ctx, db, event))
+        ):
+            result = f"{queued} pull request(s) to check"
         elif event.event in REPO_EVENTS and event.repo_full_name:
             sync_plan = await plan.build(db)
             name = event.repo_full_name.lower()
@@ -289,6 +361,7 @@ async def start_workspace(ctx: dict[str, Any], workspace_id: int) -> str:
             return "needs reconnecting"
         async with _user_github(ctx, token) as gh:
             await workspaces.start(db, ws, gh, login, sleep=ctx.get("sleep", asyncio.sleep))
+        await _workspace_problem(ctx, db, ws)
         if ws.status == workspaces.WORKING and ws.codespace_name:
             await ctx["redis"].enqueue_job("poll_workspace", ws.id, 1, _defer_by=POLL_EVERY_SECONDS)
         return str(ws.status)
@@ -346,3 +419,206 @@ async def check_workspaces(ctx: dict[str, Any]) -> int:
                         await db.commit()
             checked += 1
     return checked
+
+
+async def _workspace_problem(ctx: dict[str, Any], db: Any, ws: Workspace) -> None:
+    """Tell the user when setup stopped, or the Codespace fell back to local."""
+    if ws.status != workspaces.FAILED and not any(
+        s["key"] == "codespace" and s["state"] == "failed" for s in ws.steps
+    ):
+        return
+    stopped = ws.status == workspaces.FAILED
+    note = await notify.add(
+        db,
+        ws.user_id,
+        "workspace_problem",
+        f"{'Setup stopped' if stopped else 'No Codespace'} for {ws.repo_full_name}#{ws.number}",
+        ws.note or "Open the workspace to see what happened.",
+        dedupe_key=f"ws:{ws.id}:{ws.status}:{zlib.crc32((ws.note or '').encode())}",
+        link=f"/workspaces/{ws.id}",
+    )
+    if note is not None:
+        await _email_now(ctx, db, ws.user_id, [note])
+
+
+# ---------------------------------------------------------- pull requests
+
+TRACK_EVERY_HOURS = 2
+DIGEST_HOUR = 8  # local time
+TIMELINE_KEEP = 10
+
+
+async def _email_now(ctx: dict[str, Any], db: Any, user_id: int, notes: list[Notification]) -> None:
+    mailer: notify.Mailer | None = ctx.get("mailer")
+    urgent = [n for n in notes if n.kind in notify.IMMEDIATE]
+    if mailer is not None and urgent:
+        await mailer.send_to_user(db, user_id, urgent)
+
+
+async def _store_pulls(
+    ctx: dict[str, Any], db: Any, user_id: int, found: list[Tracked]
+) -> list[Notification]:
+    """Save each pull request's status; a change of status becomes a notification."""
+    now = utcnow()
+    existing = {
+        (row.repo_full_name.lower(), row.number): row
+        for row in await db.scalars(select(TrackedPull).where(TrackedPull.user_id == user_id))
+    }
+    changes: list[tuple[str, str | None, Tracked]] = []
+    for item in found:
+        facts, status = item.facts, item.status
+        key = (facts.repo.lower(), facts.number)
+        row = existing.get(key)
+        old = row.status if row else None
+        if row is None:
+            row = TrackedPull(user_id=user_id, repo_full_name=facts.repo, number=facts.number)
+            db.add(row)
+            existing[key] = row
+        row.title = facts.title
+        row.url = facts.url
+        row.state = facts.state
+        row.merged = facts.merged
+        row.draft = facts.draft
+        row.status = status.status.value
+        row.needs_you = status.needs_you
+        row.reasons = list(status.reasons)
+        row.nudge = item.nudge
+        row.days_quiet = status.days_quiet
+        row.opened_at = facts.opened_at
+        row.closed_at = facts.closed_at
+        row.timeline = [
+            {"at": a.at.isoformat(), "text": a.text} for a in item.activity[-TIMELINE_KEEP:]
+        ]
+        row.checked_at = now
+        if old != row.status:
+            row.changed_at = now
+            changes.append((row.status, old, item))
+        # Keep the workspace in step, so "open pull requests" counts only open ones.
+        ws = await db.scalar(
+            select(Workspace).where(
+                Workspace.user_id == user_id,
+                func.lower(Workspace.repo_full_name) == facts.repo.lower(),
+                Workspace.pr_number == facts.number,
+            )
+        )
+        if ws is not None:
+            ws.pr_state = (
+                "merged"
+                if facts.merged
+                else ("closed" if facts.state == "closed" else ("draft" if facts.draft else "open"))
+            )
+    await db.commit()
+
+    notes: list[Notification] = []
+    for new, old, item in changes:
+        # Only changes count: the first time a pull request is seen is not news.
+        if old is None or new not in notify.PR_KINDS:
+            continue
+        kind, title = notify.PR_KINDS[new]
+        note = await notify.add(
+            db,
+            user_id,
+            kind,
+            title.format(title=item.facts.title),
+            f"{item.facts.repo}#{item.facts.number}: {item.status.needs_you}",
+            dedupe_key=f"pr:{item.facts.repo.lower()}#{item.facts.number}:{old}>{new}:"
+            f"{utcnow():%Y-%m-%dT%H}",
+            link="/pulls",
+            external_url=item.facts.url,
+        )
+        if note is not None:
+            notes.append(note)
+    await _email_now(ctx, db, user_id, notes)
+    return notes
+
+
+async def _track(ctx: dict[str, Any], user_id: int, only: tuple[str, int] | None = None) -> str:
+    async with ctx["db"]() as db:
+        token, login = await _token_for(ctx, db, user_id)
+        if token is None:
+            return "skipped: no usable GitHub token"
+        if only is not None:
+            known = [only]
+        else:
+            rows = await db.execute(
+                select(TrackedPull.repo_full_name, TrackedPull.number).where(
+                    TrackedPull.user_id == user_id, TrackedPull.state == "open"
+                )
+            )
+            made = await db.execute(
+                select(Workspace.repo_full_name, Workspace.pr_number).where(
+                    Workspace.user_id == user_id, Workspace.pr_number.is_not(None)
+                )
+            )
+            known = [*((r, n) for r, n in made.all() if n is not None)]
+            known += [(r, n) for r, n in rows.all()]
+        result = await ctx["catalogue"].track(
+            token,
+            f"user:{user_id}",
+            login,
+            known,
+            discover=only is None,
+            now=utcnow(),
+        )
+        notes = await _store_pulls(ctx, db, user_id, result.pulls)
+    return f"{len(result.pulls)} pull requests, {len(notes)} new notifications"
+
+
+async def track_user(ctx: dict[str, Any], user_id: int) -> str:
+    """All of a user's pull requests: the ones FirstPR knows, and a search for others."""
+    return await _track(ctx, user_id)
+
+
+async def track_pull(ctx: dict[str, Any], user_id: int, repo: str, number: int) -> str:
+    """One pull request, soon after a webhook said something happened on it."""
+    return await _track(ctx, user_id, (repo, number))
+
+
+async def track_active_users(ctx: dict[str, Any]) -> int:
+    """Every 2 hours: pull requests of everyone who used the site lately (reads only)."""
+    since = utcnow() - timedelta(days=ctx["settings"].active_days)
+    async with ctx["db"]() as db:
+        ids = list(
+            await db.scalars(
+                select(Session.user_id).where(Session.last_seen_at >= since).distinct()
+            )
+        )
+    for user_id in ids:
+        await ctx["redis"].enqueue_job("track_user", user_id, _job_id=f"track-user:{user_id}")
+    return len(ids)
+
+
+async def send_digests(ctx: dict[str, Any]) -> int:
+    """Hourly: at 8 in the morning, local time, one email with what changed. Only when
+    something did, and only for people with email and the digest on."""
+    mailer: notify.Mailer | None = ctx.get("mailer")
+    if mailer is None or not mailer.configured:
+        return 0
+    now = utcnow()
+    since = now - timedelta(hours=24)
+    sent = 0
+    async with ctx["db"]() as db:
+        users = list(
+            await db.scalars(
+                select(Notification.user_id)
+                .where(Notification.emailed_at.is_(None), Notification.created_at >= since)
+                .distinct()
+            )
+        )
+        for user_id in users:
+            taste = await picks.load_taste(db, user_id)
+            local = now.astimezone(picks.zone(taste))
+            settings = await notify.prefs(db, user_id)
+            today = local.date().isoformat()
+            if (
+                local.hour != DIGEST_HOUR
+                or not settings.digest
+                or settings.last_digest_day == today
+            ):
+                continue
+            notes = [n for n in await notify.unemailed(db, user_id) if n.created_at >= since]
+            if await mailer.send_to_user(db, user_id, notes):
+                settings.last_digest_day = today
+                await db.commit()
+                sent += 1
+    return sent

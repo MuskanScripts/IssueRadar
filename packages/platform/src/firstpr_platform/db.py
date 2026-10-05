@@ -339,6 +339,74 @@ class Workspace(Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
+class TrackedPull(Base):
+    """A pull request a user opened, with the status the engine worked out for it."""
+
+    __tablename__ = "tracked_pulls"
+    __table_args__ = (UniqueConstraint("user_id", "repo_full_name", "number"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    repo_full_name: Mapped[str] = mapped_column(String(200))
+    number: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(String(500))
+    state: Mapped[str] = mapped_column(String(20))  # open, closed
+    merged: Mapped[bool] = mapped_column(Boolean, default=False)
+    draft: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The engine's PullRequestStatus values: changes_requested, ci_failing, merged, ...
+    status: Mapped[str] = mapped_column(String(30))
+    needs_you: Mapped[str] = mapped_column(Text)
+    reasons: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # A polite note for a stale PR, for the user to copy. Never posted for them.
+    nudge: Mapped[str | None] = mapped_column(Text)
+    days_quiet: Mapped[int] = mapped_column(Integer, default=0)
+    opened_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    closed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # The last few things that happened, newest last.
+    timeline: Mapped[list[dict[str, str]]] = mapped_column(JSON, default=list)
+    checked_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    changed_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class Notification(Base):
+    """Something the user should know about, shown in the app and maybe emailed."""
+
+    __tablename__ = "notifications"
+    __table_args__ = (UniqueConstraint("user_id", "dedupe_key"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    # pr_merged, changes_requested, ci_failing, merge_conflict, approved, stale,
+    # closed_unmerged, workspace_problem
+    kind: Mapped[str] = mapped_column(String(30))
+    title: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str] = mapped_column(Text)
+    # A page in the app, and the thing on GitHub it is about.
+    link: Mapped[str | None] = mapped_column(String(500))
+    external_url: Mapped[str | None] = mapped_column(String(500))
+    # The same event never makes two notifications (webhooks can arrive twice).
+    dedupe_key: Mapped[str] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    emailed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class EmailPrefs(Base):
+    """Email settings. No row means the defaults: email on, digest on."""
+
+    __tablename__ = "email_prefs"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    # The master switch: off means no email of any kind.
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    digest: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_digest_day: Mapped[str | None] = mapped_column(String(10))
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
 def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(engine, expire_on_commit=False)
 

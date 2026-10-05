@@ -55,10 +55,12 @@ export default function ProfilePage() {
       </section>
 
       <section className="rounded-lg border border-line bg-surface p-5">
-        <h2 className="mb-1 font-semibold">Level, skills and starter packs</h2>
-        <p className="mb-3 text-sm text-ink-2">Your daily pick and Explore use these.</p>
-        <Link href="/onboarding" className="rounded-md border border-line px-4 py-2 font-semibold">
-          Change them
+        <h2 className="mb-1 font-semibold">Settings</h2>
+        <p className="mb-3 text-sm text-ink-2">
+          Email, your level, skills and starter packs.
+        </p>
+        <Link href="/settings" className="rounded-md border border-line px-4 py-2 font-semibold">
+          Open Settings
         </Link>
       </section>
 

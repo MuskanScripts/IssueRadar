@@ -500,6 +500,7 @@ async def create_pull_request(
     request: Request,
     user: User = Depends(current_user),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    jobs: Jobs = Depends(get_jobs),  # noqa: B008
     settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> PullResult:
     """Open the pull request. Only ever sent by the user's own click."""
@@ -550,6 +551,14 @@ async def create_pull_request(
                 opened=False, manual_url=_manual_url(settings, ws, body), workspace=out(ws)
             )
     ws_flow.record_pull(ws, pull)
+    # Show it on My pull requests straight away, with its status.
+    await jobs.enqueue_job(
+        "track_pull",
+        user.id,
+        ws.repo_full_name,
+        ws.pr_number,
+        _job_id=f"track-pull:{user.id}:{ws.repo_full_name.lower()}#{ws.pr_number}",
+    )
     card = await db.scalar(_card_query(ws.repo_full_name, ws.number))
     if card is not None:
         await picks.log(db, user.id, card, "issue", "pr_opened")

@@ -10,7 +10,7 @@ export function useMe() {
 }
 
 // Pages that work before onboarding is finished.
-const BEFORE_ONBOARDING = ["/onboarding", "/profile", "/admin"];
+const BEFORE_ONBOARDING = ["/onboarding", "/profile", "/admin", "/settings", "/notifications"];
 
 /** Sends signed-out visitors to GitHub sign-in, then back to this page, and new
  * people to onboarding first. */

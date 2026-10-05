@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     # Where everyone opens their first pull request, e.g. "MuskanScripts/firstpr-practice".
     # Empty turns the practice rule off.
     practice_repo: str = ""
+    # Only used to tell people whether email is set up on this server (the worker sends).
+    resend_api_key: SecretStr = SecretStr("")
     # Open pull requests a person can have waiting at once.
     max_open_prs: int = 3
 

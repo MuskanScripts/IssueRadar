@@ -7,6 +7,10 @@ const apiUrl = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
 const config: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // Compressing would hold back server-sent events (live workspace steps and
+  // notifications) when /api goes through the rewrite below. The proxy in front
+  // compresses in production.
+  compress: false,
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${apiUrl}/api/:path*` }];
   },

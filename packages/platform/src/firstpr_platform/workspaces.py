@@ -61,7 +61,10 @@ def branch_name(number: int, title: str) -> str:
 async def open_prs(db: AsyncSession, user_id: int) -> int:
     count = await db.scalar(
         select(func.count(Workspace.id)).where(
-            Workspace.user_id == user_id, Workspace.status == PR_OPEN
+            Workspace.user_id == user_id,
+            Workspace.status == PR_OPEN,
+            # Merged or closed ones (seen by the PR tracker) no longer count.
+            Workspace.pr_state.in_(("open", "draft")),
         )
     )
     return count or 0

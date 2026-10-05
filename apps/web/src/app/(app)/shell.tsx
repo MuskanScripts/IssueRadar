@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NotificationBell } from "@/components/notification-bell";
 import { AuthGate, ReconnectBanner } from "./auth-gate";
 
 const LINKS: { href: string; label: string; soon?: boolean }[] = [
   { href: "/home", label: "Home" },
   { href: "/explore", label: "Explore" },
   { href: "/workspaces", label: "My work" },
+  { href: "/pulls", label: "My PRs" },
   { href: "/leaderboard", label: "Leaderboard", soon: true },
   { href: "/paths", label: "Paths", soon: true },
 ];
@@ -45,9 +47,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <NavLink key={link.href} {...link} />
               ))}
               {me.role === "admin" ? <NavLink href="/admin" label="Admin" /> : null}
+              <span className="ml-auto">
+                <NotificationBell />
+              </span>
               <Link
                 href="/profile"
-                className="ml-auto flex items-center gap-2 rounded-md px-2 py-1 hover:bg-surface"
+                className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-surface"
                 aria-label="Your profile"
               >
                 {me.avatar_url ? (

@@ -100,12 +100,15 @@ async def load_taste(db: AsyncSession, user_id: int) -> Taste:
     )
 
 
-def local_day(taste: Taste, now: datetime) -> date:
+def zone(taste: Taste) -> ZoneInfo:
     try:
-        zone = ZoneInfo(taste.timezone)
+        return ZoneInfo(taste.timezone)
     except (ZoneInfoNotFoundError, ValueError):
-        zone = ZoneInfo("UTC")
-    return now.astimezone(zone).date()
+        return ZoneInfo("UTC")
+
+
+def local_day(taste: Taste, now: datetime) -> date:
+    return now.astimezone(zone(taste)).date()
 
 
 def _skill_level(skills: stack.SkillProfile, name: str) -> str | None:

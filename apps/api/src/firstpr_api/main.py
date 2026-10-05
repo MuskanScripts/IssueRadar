@@ -17,6 +17,7 @@ from firstpr_api import (
     auth,
     health,
     issues,
+    notifications,
     profile,
     watches,
     webhooks,
@@ -93,6 +94,7 @@ def create_app(
     v1.include_router(profile.router)
     v1.include_router(issues.router)
     v1.include_router(workspaces.router)
+    v1.include_router(notifications.router)
     v1.include_router(admin.router)
     v1.include_router(webhooks.router)
     app.include_router(v1)

@@ -105,7 +105,9 @@ class PullTracker:
                 user.login = login
         return login
 
-    async def discover(self, login: str, repos: list[str] | None = None) -> list[tuple[str, int]]:
+    async def discover(
+        self, login: str, repos: list[str] | None = None, *, public_only: bool = False
+    ) -> list[tuple[str, int]]:
         since = (self.clock() - timedelta(days=self.settings.pull_requests.track_days)).date()
         found: list[tuple[str, int]] = []
         if repos:
@@ -128,6 +130,9 @@ class PullTracker:
                             found.append((repo, int(pr["number"])))
             return found
         query = f"is:pr author:{login} updated:>={since.isoformat()}"
+        if public_only:
+            # The hosted platform never looks at private repos.
+            query += " is:public"
         async for page in self.client.paginate(
             "/search/issues", params={"q": query, "per_page": 100}, max_pages=3
         ):
