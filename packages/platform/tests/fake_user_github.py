@@ -28,6 +28,7 @@ class FakeUserGitHub:
         self.codespace_state = "Available"
         self.sync_conflict = False
         self.ahead_by = 0
+        self.commit_date = "2026-10-05T18:20:00Z"
         self.template: str | None = None
         self.pulls: list[dict[str, Any]] = []
         self.pull_error: tuple[int, str] | None = None
@@ -122,7 +123,13 @@ class FakeUserGitHub:
             return httpx.Response(201, json=self.codespaces[name])
         if rest.startswith("/compare/") and method == "GET":
             commits = [
-                {"sha": f"{i:040d}", "commit": {"message": f"Change {i}\n\ndetails"}}
+                {
+                    "sha": f"{i:040d}",
+                    "commit": {
+                        "message": f"Change {i}\n\ndetails",
+                        "author": {"date": self.commit_date},
+                    },
+                }
                 for i in range(1, self.ahead_by + 1)
             ]
             files = [

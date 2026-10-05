@@ -16,17 +16,18 @@ In front of them, a Caddy proxy (`infra/compose/Caddyfile`) puts everything on o
 |---|---|---|
 | `/` | Public, server-rendered, cached 30 seconds | Intro text and the platform status, fetched by the server from the API |
 | `/onboarding` | Signed in, client component | Three short, skippable steps: level, skills, starter packs. New people land here first |
-| `/home` | Signed in, client component | Today's pick, why it was picked, how long it is held, and Show me another |
+| `/home` | Signed in, client component | Today's pick, why it was picked, how long it is held, Show me another, today's minutes, streak, XP and a 17-week calendar |
 | `/explore` | Signed in, client component | Every open issue nobody holds, with filters, best fit / recently active / shuffled order, Load more, and Refresh |
 | `/issues/<owner>/<repo>/<number>` | Signed in, client component | Why it is free, why it suits you, what to do first, repo health; checked live on GitHub when our copy is over 10 minutes old |
 | `/workspaces` | Signed in, client component | My work: the issues you started, with their state, and the practice-repo rule |
 | `/workspaces/<id>` | Signed in, client component | The setup steps live, Open your Codespace or clone instructions, I finished (commits and files), and the Create pull request form |
+| `/progress` | Signed in, client component | XP, streak with the weekly freeze, today's minutes, the full-year activity calendar, badges and recent XP |
 | `/pulls` | Signed in, client component | My pull requests: Needs you, Waiting on others, Done, with what to do, recent activity, a nudge to copy for quiet ones, and Check now |
 | `/notifications` | Signed in, client component | Everything FirstPR told you; the bell in the menu shows the unread count live |
 | `/settings` | Signed in, client component | Email on or off, the daily digest, and a link to change level and skills |
 | `/email-off` | Public | Where the unsubscribe link in every email lands |
 | `/leaderboard`, `/paths` | Signed in, client component | Coming-soon placeholders with an "I want this" button |
-| `/profile` | Signed in, client component | Your GitHub account, its connection status, a link to change level and skills, and Sign out |
+| `/profile` | Signed in, client component | Stats, the full-year calendar, merged pull requests, skills, connected GitHub status, the public/private switch, Settings and Sign out |
 | `/admin` | Admins only, client component | Every synced repo with its token, watchers and last result, the GitHub budgets, webhooks, and adding or removing catalogue repos |
 
 ## Run everything locally
@@ -145,6 +146,22 @@ Email goes through [Resend](https://resend.com) (`FIRSTPR_RESEND_API_KEY`, `FIRS
 - Everything else waits for the daily digest at 8 in the morning in the user's time zone, sent only on days with something new.
 - Every email goes through one function that checks the user's switch first, so turning email off in Settings stops every email.
 - Every email has a one-click unsubscribe link (signed with a key derived from `FIRSTPR_TOKEN_KEYS`) and the `List-Unsubscribe` headers mail apps use for their own Unsubscribe button.
+
+## XP, streaks and the activity calendar
+
+**XP** is for accepted work only, and only the worker writes it, when the PR tracker sees the change: +100 for a merged pull request, +20 when one is approved, +30 for the practice task. Pull requests opened through FirstPR count from the start; other pull requests only for changes FirstPR saw happen (an old merge found by the first search earns nothing). Each award is stored with what earned it (`xp_transactions`, unique per user and source), so a webhook that arrives twice still pays once. The total is kept on the user.
+
+**Badges**: First pull request, Warmed up (practice), Merged, Hat trick (3 merged), Explorer (merged in 3 repos), Seven days (a 7-day streak). They are checked after XP and after activity is saved, and each is a notification in the app.
+
+**Active minutes** come from three layers:
+
+1. The site: once a minute the page sends a heartbeat, but only while its tab is visible and the user did something in the last 2 minutes. The API checks both again and counts at most one minute per 55 seconds, in Redis under the user's own calendar day (their time zone, so 23:50 counts that day). The worker moves the counts to `daily_activity` every 10 minutes.
+2. Codespaces: the 5-minute workspace check notes when a Codespace was first and last seen running. When it stops, the run minus the 15 idle minutes before the automatic stop is added to the day it started.
+3. Commits: commits pushed to FirstPR branches are added to the day they were made, each once.
+
+There is no VS Code extension yet (it is a coming-soon placeholder).
+
+A day is **green** at 15 active minutes or a pushed commit. The **streak** is green days in a row; today counts once it is green. One missed day a week (Monday to Sunday) is bridged by a free **freeze** when the days on both sides are green; frozen days are marked on the calendar.
 
 ## Admin
 

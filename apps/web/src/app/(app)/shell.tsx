@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NotificationBell } from "@/components/notification-bell";
+import { useHeartbeat } from "@/components/use-heartbeat";
 import { AuthGate, ReconnectBanner } from "./auth-gate";
 
 const LINKS: { href: string; label: string; soon?: boolean }[] = [
@@ -10,9 +11,31 @@ const LINKS: { href: string; label: string; soon?: boolean }[] = [
   { href: "/explore", label: "Explore" },
   { href: "/workspaces", label: "My work" },
   { href: "/pulls", label: "My PRs" },
+  { href: "/progress", label: "Progress" },
+];
+// Planned pages, kept in the menu so they are easy to switch on later.
+const MORE: { href: string; label: string; soon?: boolean }[] = [
   { href: "/leaderboard", label: "Leaderboard", soon: true },
   { href: "/paths", label: "Paths", soon: true },
 ];
+
+function MoreMenu({ admin }: { admin: boolean }) {
+  const pathname = usePathname();
+  const items = admin ? [...MORE, { href: "/admin", label: "Admin" }] : MORE;
+  return (
+    // Keyed on the path, so it closes after picking a page.
+    <details key={pathname} className="relative">
+      <summary className="cursor-pointer list-none text-ink-2 hover:text-ink">More ▾</summary>
+      <ul className="absolute left-0 z-20 mt-2 flex min-w-40 flex-col gap-2 rounded-md border border-line bg-surface p-3 shadow">
+        {items.map((link) => (
+          <li key={link.href}>
+            <NavLink {...link} />
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
 
 function NavLink({ href, label, soon }: { href: string; label: string; soon?: boolean }) {
   const pathname = usePathname();
@@ -34,6 +57,7 @@ function NavLink({ href, label, soon }: { href: string; label: string; soon?: bo
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  useHeartbeat();
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
       <AuthGate>
@@ -46,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {LINKS.map((link) => (
                 <NavLink key={link.href} {...link} />
               ))}
-              {me.role === "admin" ? <NavLink href="/admin" label="Admin" /> : null}
+              <MoreMenu admin={me.role === "admin"} />
               <span className="ml-auto">
                 <NotificationBell />
               </span>

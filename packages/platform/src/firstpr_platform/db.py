@@ -70,6 +70,8 @@ class User(Base):
     avatar_url: Mapped[str | None] = mapped_column(String(500))
     # "user" or "admin". Admins are the GitHub logins in FIRSTPR_ADMIN_LOGINS.
     role: Mapped[str] = mapped_column(String(20), default="user")
+    # Sum of xp_transactions, kept here so pages never add it up.
+    xp: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
@@ -180,6 +182,8 @@ class Profile(Base):
     # IANA name from the browser, so "today" means the user's own day.
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     onboarded_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # Whether the profile can be seen by people who are not signed in (Step 8).
+    public: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
@@ -335,6 +339,11 @@ class Workspace(Base):
     pr_url: Mapped[str | None] = mapped_column(String(500))
     pr_state: Mapped[str | None] = mapped_column(String(20))
     pr_opened_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # Codespace time: when the current run was first and last seen running.
+    codespace_up_since: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    codespace_up_last: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # Commits on the branch already counted on the activity calendar.
+    counted_commits: Mapped[list[str]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
@@ -405,6 +414,53 @@ class EmailPrefs(Base):
     digest: Mapped[bool] = mapped_column(Boolean, default=True)
     last_digest_day: Mapped[str | None] = mapped_column(String(10))
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+class XpTransaction(Base):
+    """One XP award. Written only by the worker, for accepted work.
+
+    `source` names what earned it (for example "pr:owner/repo#12:merged") and is
+    unique per user, so the same event can never pay twice.
+    """
+
+    __tablename__ = "xp_transactions"
+    __table_args__ = (UniqueConstraint("user_id", "source"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    amount: Mapped[int] = mapped_column(Integer)
+    # pr_merged, pr_approved, practice_done
+    reason: Mapped[str] = mapped_column(String(30))
+    source: Mapped[str] = mapped_column(String(300))
+    note: Mapped[str] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class UserBadge(Base):
+    __tablename__ = "user_badges"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    badge: Mapped[str] = mapped_column(String(40), primary_key=True)
+    earned_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class DailyActivity(Base):
+    """Active time on one day of the user's own calendar (their time zone)."""
+
+    __tablename__ = "daily_activity"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)  # YYYY-MM-DD
+    # Minutes on the site: tab visible and used in the last 2 minutes.
+    web_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    # Minutes a Codespace was running, minus the idle time before it stopped.
+    codespace_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    # Commits pushed to FirstPR branches that day.
+    commits: Mapped[int] = mapped_column(Integer, default=0)
 
 
 def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

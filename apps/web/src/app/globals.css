@@ -10,6 +10,11 @@
   --accent-ink: #ffffff;
   --good: #1f7a3d;
   --warn: #b4570b;
+  /* Activity calendar: one hue, light to dark. Empty days use the line colour. */
+  --heat-1: #b9e4dd;
+  --heat-2: #72c9bb;
+  --heat-3: #2a9d8f;
+  --heat-4: #0b6b63;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,6 +28,10 @@
     --accent-ink: #06201d;
     --good: #5fd48a;
     --warn: #f0a35e;
+    --heat-1: #164a45;
+    --heat-2: #1d7268;
+    --heat-3: #2fa597;
+    --heat-4: #6ad8c8;
     color-scheme: dark;
   }
 }

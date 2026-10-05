@@ -9,6 +9,8 @@ Workspaces are set up when a user clicks Start working, and every 5 minutes
 their Codespaces and pull requests are checked (reads only). Every 2 hours it
 works out the status of everyone's pull requests, notifying them of changes,
 and every hour it sends the 8 o'clock digest to whoever is at 8 o'clock.
+Every 10 minutes it saves the site minutes counted in Redis to the activity
+calendar; the 5-minute workspace check adds Codespace time and pushed commits.
 Webhooks from GitHub are handled as they arrive.
 """
 
@@ -31,6 +33,7 @@ from firstpr_worker.catalogue import Catalogue
 from firstpr_worker.jobs import (
     cards_if_empty,
     check_workspaces,
+    flush_activity,
     handle_webhook,
     make_daily_picks,
     poll_workspace,
@@ -124,6 +127,7 @@ class WorkerSettings:
         func(track_pull, keep_result=0),
         func(track_active_users, keep_result=0),
         func(send_digests, keep_result=0, timeout=10 * 60),
+        func(flush_activity, keep_result=0),
     ]
     cron_jobs: ClassVar = [
         cron(heartbeat, second=0, run_at_startup=False),
@@ -140,6 +144,7 @@ class WorkerSettings:
             keep_result=0,
         ),
         cron(send_digests, minute=25, second=0, unique=True, keep_result=0),
+        cron(flush_activity, minute=set(range(1, 60, 10)), second=30, unique=True, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

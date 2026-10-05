@@ -37,6 +37,7 @@ export type Profile = {
   packs: string[];
   timezone: string;
   onboarded: boolean;
+  public?: boolean;
 };
 
 export type Issue = {
@@ -320,3 +321,24 @@ export type NotificationItem = {
 export type Notifications = { items: NotificationItem[]; unread: number };
 
 export type EmailSettings = { address: string | null; enabled: boolean; digest: boolean; sending: boolean };
+
+export type ActivityDay = {
+  day: string;
+  minutes: number;
+  web_minutes: number;
+  codespace_minutes: number;
+  commits: number;
+  green: boolean;
+  frozen: boolean;
+};
+
+export type Progress = {
+  today: string;
+  today_minutes: number;
+  goal_minutes: number;
+  streak: { current: number; best: number; freeze_left_this_week: boolean };
+  calendar: ActivityDay[];
+  badges: { key: string; name: string; description: string; earned_at: string | null }[];
+  recent_xp: { amount: number; note: string; created_at: string }[];
+  stats: { xp: number; merged: number; open_prs: number; repos: number; started: number };
+};
