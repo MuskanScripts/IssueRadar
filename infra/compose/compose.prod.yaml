@@ -1,0 +1,110 @@
+# FirstPR on one server (a VPS) with automatic HTTPS from Caddy.
+#
+#   cp infra/compose/.env.example infra/compose/.env   # then fill it in
+#   DOMAIN=firstpr.example.dev docker compose -f infra/compose/compose.prod.yaml up -d --build
+#
+# Point the domain's A/AAAA record at the server first; Caddy gets the certificate
+# on its own. Only ports 80 and 443 are open; Postgres and Redis stay private.
+# See docs/deploy.md.
+
+name: firstpr
+
+x-python-env: &python-env
+  FIRSTPR_DATABASE_URL: postgresql+psycopg://firstpr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/firstpr
+  FIRSTPR_REDIS_URL: redis://redis:6379/0
+  FIRSTPR_PUBLIC_URL: https://${DOMAIN:?set DOMAIN}
+  FIRSTPR_COOKIE_SECURE: "true"
+  FIRSTPR_ENVIRONMENT: ${ENVIRONMENT:-production}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: firstpr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: firstpr
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/10-catalogue.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U firstpr -d firstpr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Keep the queue across restarts, and never evict keys.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment: *python-env
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    environment: *python-env
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      SITE_URL: https://${DOMAIN}
+      FEEDBACK_URL: ${FEEDBACK_URL:-}
+    depends_on:
+      - api
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - web
+
+volumes:
+  postgres:
+  redis:
+  caddy-data:
+  caddy-config:

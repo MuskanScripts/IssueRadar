@@ -43,9 +43,22 @@ class SyncPlan:
         return APP if full_name.lower() in {r.lower() for r in self.app} else USER
 
 
+async def opted_out(db: AsyncSession) -> set[str]:
+    """Lower-case names of repos whose maintainers opted out of FirstPR."""
+    names = await db.scalars(
+        select(CatalogueRepo.full_name).where(CatalogueRepo.opted_out_at.is_not(None))
+    )
+    return {n.lower() for n in names}
+
+
 async def build(db: AsyncSession) -> SyncPlan:
     plan = SyncPlan()
-    catalogue = {name.lower(): name for name in await db.scalars(select(CatalogueRepo.full_name))}
+    excluded = await opted_out(db)
+    catalogue = {
+        name.lower(): name
+        for name in await db.scalars(select(CatalogueRepo.full_name))
+        if name.lower() not in excluded
+    }
     counts = await db.execute(
         select(func.lower(Watch.repo_full_name), func.count(Watch.id)).group_by(
             func.lower(Watch.repo_full_name)
@@ -55,7 +68,7 @@ async def build(db: AsyncSession) -> SyncPlan:
     plan.app = set(catalogue.values())
     for watch in await db.scalars(select(Watch).order_by(Watch.id)):
         key = watch.repo_full_name.lower()
-        if key in catalogue:
+        if key in catalogue or key in excluded:
             continue
         if plan.watchers.get(key, 0) >= 2:
             plan.app.add(watch.repo_full_name)

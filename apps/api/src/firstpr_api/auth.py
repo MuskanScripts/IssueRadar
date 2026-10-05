@@ -123,6 +123,10 @@ async def callback(
     except (GitHubAuthError, httpx.HTTPError):
         return back("failed")
 
+    allowed = settings.invite_login_set | settings.admin_login_set
+    if settings.invite_only and gh.login.lower() not in allowed:
+        # Tester phase: only invited GitHub accounts. Nothing about them is stored.
+        return back("invite")
     user = await accounts.upsert(db, gh, tokens, box, settings.admin_login_set)
     # A new session on every sign-in; an old cookie on this browser is dropped.
     await sessions.revoke(db, redis, request.cookies.get(sessions.SESSION_COOKIE))

@@ -13,7 +13,8 @@ from datetime import datetime
 from typing import Any
 
 import httpx
-from sqlalchemy import delete, func, select
+from sqlalchemy import create_engine, delete, func, make_url, select, text
+from sqlalchemy.exc import OperationalError
 
 from issueradar.config.settings import Settings, load_settings
 from issueradar.engine import coach
@@ -101,6 +102,30 @@ def pack_repos() -> list[str]:
         for repo in pack.repos:
             seen.setdefault(repo.lower(), repo)
     return sorted(seen.values(), key=str.lower)
+
+
+def ensure_database(url: str) -> bool:
+    """Create the engine's Postgres database when it does not exist yet (managed
+    Postgres services start with one database). True when it was created."""
+    target = make_url(url)
+    if not target.drivername.startswith("postgresql") or not target.database:
+        return False
+    engine = create_engine(target)
+    try:
+        with engine.connect():
+            return False
+    except OperationalError as error:
+        if "does not exist" not in str(error):
+            raise
+    finally:
+        engine.dispose()
+    admin = create_engine(target.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    try:
+        with admin.connect() as conn:
+            conn.execute(text(f'CREATE DATABASE "{target.database}"'))
+    finally:
+        admin.dispose()
+    return True
 
 
 class Catalogue:

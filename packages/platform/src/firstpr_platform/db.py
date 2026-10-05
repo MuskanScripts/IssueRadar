@@ -31,6 +31,15 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
+def database_url(url: str) -> str:
+    """Hosting services hand out postgres:// or postgresql:// URLs; SQLAlchemy needs
+    the driver named (psycopg 3, which also does async)."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url.removeprefix(prefix)
+    return url
+
+
 def utcnow() -> datetime:
     return datetime.now(UTC)
 
@@ -135,6 +144,9 @@ class CatalogueRepo(Base):
     # "pack" (from a starter pack) or "admin" (added by hand).
     source: Mapped[str] = mapped_column(String(20))
     added_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # Set when the repo's maintainers opted out with .github/firstpr.yml.
+    opted_out_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    opt_out_checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class RepoSync(Base):

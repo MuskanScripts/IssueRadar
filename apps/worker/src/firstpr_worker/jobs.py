@@ -15,7 +15,9 @@ from dataclasses import asdict
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import func, select
+import httpx
+import yaml
+from sqlalchemy import delete, func, select
 
 from firstpr_platform import accounts, notify, picks, plan, progress, workspaces
 from firstpr_platform.analytics import Analytics
@@ -753,3 +755,73 @@ async def send_digests(ctx: dict[str, Any]) -> int:
                 await db.commit()
                 sent += 1
     return sent
+
+
+# --------------------------------------------------------------- opt-out
+
+OPT_OUT_FILE = ".github/firstpr.yml"
+OPT_OUT_EVERY = timedelta(hours=24)
+
+
+def wants_out(text: str) -> bool:
+    """True when .github/firstpr.yml says `opt_out: true`. Anything unreadable is not an opt-out."""
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return False
+    return isinstance(data, dict) and data.get("opt_out") is True
+
+
+async def check_opt_outs(ctx: dict[str, Any]) -> str:
+    """Once a day per repo: read .github/firstpr.yml in each catalogue repo (one read
+    each). A repo that opts out drops out of the sync, the picks and the public pages,
+    and its issue cards are removed. Removing the file brings it back."""
+    tokens = ctx.get("app_tokens")
+    if tokens is None:
+        return "skipped: the GitHub App is not set up"
+    now = utcnow()
+    token = await tokens.token()
+    changed: list[str] = []
+    async with ctx["db"]() as db:
+        rows = list(await db.scalars(select(CatalogueRepo)))
+        due = [
+            r
+            for r in rows
+            if r.opt_out_checked_at is None or now - r.opt_out_checked_at > OPT_OUT_EVERY
+        ]
+        async with httpx.AsyncClient(
+            base_url=ctx["settings"].github_api_url,
+            transport=ctx.get("github_transport"),
+            timeout=15,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github.raw+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "FirstPR",
+            },
+        ) as client:
+            for repo in due:
+                resp = await client.get(f"/repos/{repo.full_name}/contents/{OPT_OUT_FILE}")
+                if resp.status_code not in (200, 404):
+                    continue  # try again tomorrow
+                out = resp.status_code == 200 and wants_out(resp.text)
+                if out and repo.opted_out_at is None:
+                    repo.opted_out_at = now
+                    changed.append(f"{repo.full_name} opted out")
+                    await db.execute(
+                        delete(IssueCard).where(
+                            func.lower(IssueCard.repo_full_name) == repo.full_name.lower()
+                        )
+                    )
+                elif not out and repo.opted_out_at is not None:
+                    repo.opted_out_at = None
+                    changed.append(f"{repo.full_name} is back")
+                repo.opt_out_checked_at = now
+        await db.commit()
+    return "; ".join(changed) or f"checked {len(due)} repos, no change"
+
+
+async def forget_user(ctx: dict[str, Any], user_id: int) -> str:
+    """After someone deleted their account: drop their list from the engine's database too."""
+    ctx["catalogue"].clear_watchlist(engine_user_id(user_id))
+    return "forgotten"

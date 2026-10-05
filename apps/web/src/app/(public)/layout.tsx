@@ -23,6 +23,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <div className="flex-1">{children}</div>
       <footer className="mt-12 flex flex-wrap gap-x-6 gap-y-2 border-t border-line py-6 text-sm text-ink-2">
         <span>FirstPR helps you make your first open-source contributions.</span>
+        <a href="/maintainers" className="underline">
+          For maintainers
+        </a>
+        <a href="/feedback" className="underline">
+          Feedback
+        </a>
         <a href="https://github.com/MuskanScripts/IssueRadar" className="underline">
           Source code
         </a>

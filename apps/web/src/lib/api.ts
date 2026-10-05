@@ -119,7 +119,9 @@ export type SyncOverview = {
   }[];
 };
 
-export const serverApiUrl = () => process.env.API_INTERNAL_URL ?? "http://localhost:8000";
+export const serverApiUrl = () =>
+  process.env.API_INTERNAL_URL ??
+  (process.env.API_INTERNAL_HOSTPORT ? `http://${process.env.API_INTERNAL_HOSTPORT}` : "http://localhost:8000");
 
 export const signInUrl = (returnTo?: string) =>
   `/api/v1/auth/github/login${returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : ""}`;

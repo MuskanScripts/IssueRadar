@@ -1,0 +1,117 @@
+# Render Blueprint for FirstPR: Render dashboard -> New -> Blueprint -> pick this repo.
+# The full walkthrough, including which secrets to paste, is in docs/deploy.md.
+#
+# Only the web service is public. It sends /api to the API over Render's private
+# network, so the site, the API and the sign-in cookie all live on one address.
+
+envVarGroups:
+  # Shared by the API and the worker. Render asks for each value on the first deploy.
+  - name: firstpr-secrets
+    envVars:
+      - key: FIRSTPR_GITHUB_CLIENT_ID
+        sync: false
+      - key: FIRSTPR_GITHUB_CLIENT_SECRET
+        sync: false
+      - key: FIRSTPR_TOKEN_KEYS
+        sync: false
+      - key: FIRSTPR_GITHUB_APP_ID
+        sync: false
+      - key: FIRSTPR_GITHUB_APP_PRIVATE_KEY
+        sync: false
+      - key: FIRSTPR_RESEND_API_KEY
+        sync: false
+      - key: FIRSTPR_EMAIL_FROM
+        sync: false
+      - key: FIRSTPR_POSTHOG_KEY
+        sync: false
+      - key: FIRSTPR_SENTRY_DSN
+        sync: false
+      - key: FIRSTPR_PUBLIC_URL
+        sync: false
+      - key: FIRSTPR_ENVIRONMENT
+        value: production
+
+services:
+  - type: web
+    name: firstpr-web
+    runtime: docker
+    dockerfilePath: apps/web/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      # Read at build time; Render passes env vars to the Docker build as build args.
+      - key: API_INTERNAL_HOSTPORT
+        fromService:
+          type: pserv
+          name: firstpr-api
+          property: hostport
+      - key: SITE_URL
+        sync: false
+      - key: FEEDBACK_URL
+        sync: false
+
+  - type: pserv
+    name: firstpr-api
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - fromGroup: firstpr-secrets
+      - key: FIRSTPR_DATABASE_URL
+        fromDatabase:
+          name: firstpr-db
+          property: connectionString
+      - key: FIRSTPR_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: firstpr-redis
+          property: connectionString
+      - key: FIRSTPR_GITHUB_APP_SLUG
+        sync: false
+      - key: FIRSTPR_GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: FIRSTPR_PRACTICE_REPO
+        sync: false
+      - key: FIRSTPR_ADMIN_LOGINS
+        sync: false
+      - key: FIRSTPR_INVITE_ONLY
+        value: "true"
+      - key: FIRSTPR_INVITE_LOGINS
+        sync: false
+      - key: FIRSTPR_WAITLIST_URL
+        sync: false
+      - key: FIRSTPR_METRICS_TOKEN
+        generateValue: true
+
+  - type: worker
+    name: firstpr-worker
+    runtime: docker
+    dockerfilePath: apps/worker/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - fromGroup: firstpr-secrets
+      - key: FIRSTPR_DATABASE_URL
+        fromDatabase:
+          name: firstpr-db
+          property: connectionString
+      - key: FIRSTPR_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: firstpr-redis
+          property: connectionString
+
+  - type: keyvalue
+    name: firstpr-redis
+    plan: starter
+    # The job queue lives here; do not let Redis drop keys under memory pressure.
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+databases:
+  - name: firstpr-db
+    plan: basic-256mb
+    databaseName: firstpr
+    postgresMajorVersion: "16"

@@ -14,6 +14,7 @@ dependencies = [
   "redis>=5,<7",
   "pydantic-settings>=2.4,<3",
   "sqlalchemy[asyncio]>=2.0.30,<3",
+  "sentry-sdk>=2,<3",
   # The engine (packages/core) and the shared platform code (packages/platform).
   "firstpr",
   "firstpr-platform",
@@ -26,6 +27,7 @@ dev = [
   "mypy>=1.11,<3",
   "fakeredis>=2.26,<3",
   "aiosqlite>=0.20,<1",
+  "types-PyYAML>=6.0",
 ]
 
 [tool.hatch.build.targets.wheel]

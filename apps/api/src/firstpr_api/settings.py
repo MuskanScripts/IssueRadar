@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from firstpr_platform.db import database_url
 
 
 class Settings(BaseSettings):
@@ -53,8 +55,32 @@ class Settings(BaseSettings):
     # PostHog project key and host for the sign-up funnel. Empty: no analytics.
     posthog_key: str = ""
     posthog_host: str = "https://us.i.posthog.com"
+    # Error reports to Sentry. Empty: none are sent.
+    sentry_dsn: str = ""
+    # development, staging or production; shown in Sentry and on /metrics.
+    environment: str = "development"
+    # Invite-only sign-in for the tester phase: only these GitHub logins (comma-
+    # separated) and admins can sign in while invite_only is on.
+    invite_only: bool = False
+    invite_logins: str = ""
+    # Where "Join the waiting list" points while sign-in is invite-only.
+    waitlist_url: str = ""
+    # Bearer token for /api/v1/metrics (Prometheus format). Empty: metrics are off.
+    metrics_token: SecretStr = SecretStr("")
     # Open pull requests a person can have waiting at once.
     max_open_prs: int = 3
+
+    @model_validator(mode="after")
+    def _cookies_match_the_address(self) -> Settings:
+        self.database_url = database_url(self.database_url)
+        # A site on https must never send its session cookie over plain http.
+        if self.public_url.startswith("https://") and not self.cookie_secure:
+            raise ValueError("FIRSTPR_COOKIE_SECURE must be true when FIRSTPR_PUBLIC_URL is https")
+        return self
+
+    @property
+    def invite_login_set(self) -> frozenset[str]:
+        return frozenset(x.strip().lower() for x in self.invite_logins.split(",") if x.strip())
 
     @property
     def admin_login_set(self) -> frozenset[str]:

@@ -175,6 +175,18 @@ The web app sets `SITE_URL` (the site's own address) for absolute links in the s
 
 The sign-up funnel goes to [PostHog](https://posthog.com) when `FIRSTPR_POSTHOG_KEY` is set (API and worker): `intro_viewed`, `stack_picker_used`, `sign_in_clicked` (sent by the page through `POST /api/v1/public/events`, under a random id in the `firstpr_aid` cookie), `signed_in` (which links that id to the user), `first_pick_started` and `first_pr_merged`. Events carry ids only; no names, emails or tokens.
 
+## Launch and operations
+
+- **Maintainer opt-out.** A repo with `.github/firstpr.yml` containing `opt_out: true` leaves the catalogue, daily picks and Explore. The worker reads the file with the app's token once a day per repo; removing the file brings the repo back. `/maintainers` explains the rules.
+- **Invite-only sign-in.** With `FIRSTPR_INVITE_ONLY=true`, only logins in `FIRSTPR_INVITE_LOGINS` and the admins can sign in; everyone else lands on the intro page with a note (and `FIRSTPR_WAITLIST_URL`, when set).
+- **Delete my account** on Profile removes every row FirstPR keeps about the person, their sessions and their watchlist, at once. Nothing on GitHub is touched.
+- **Errors** go to Sentry when `FIRSTPR_SENTRY_DSN` is set; the web app reports its own crashes to `POST /api/v1/client-errors`.
+- **Metrics** for Prometheus at `/api/v1/metrics` with `Authorization: Bearer <FIRSTPR_METRICS_TOKEN>`: requests and errors in the last 5 minutes, GitHub budget left per token, the oldest queued job, workspace failures, the worker heartbeat and users. A 404 without the token.
+- **Security headers** on every page and API answer (CSP, nosniff, no framing, referrer policy).
+- **Feedback:** `/feedback` goes to `FEEDBACK_URL`, or a new issue on this repo.
+
+Deploying (Render or one server), backups, alerts and the launch checklist are in [docs/deploy.md](../docs/deploy.md).
+
 ## Admin
 
 GitHub logins in `FIRSTPR_ADMIN_LOGINS` (comma-separated) get the admin role when they sign in, and an Admin link appears in the menu. `/admin` shows every synced repo (problems first), which token it uses, how many people watch it, the last result, the GitHub budgets, webhook counts, how many issue cards are ready, and the "I want this" counts. Admins can add and remove catalogue repos there.
