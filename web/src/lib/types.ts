@@ -1,4 +1,4 @@
-// Mirrors the API's response models (src/issueradar/api/app.py, OpenAPI at /api/docs).
+// Mirrors the API's response models (packages/core/src/issueradar/api/app.py, OpenAPI at /api/docs).
 
 export type Tier = "beginner" | "intermediate" | "pro";
 

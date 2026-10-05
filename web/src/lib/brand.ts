@@ -10,5 +10,5 @@ export interface Brand {
   repository: string;
 }
 
-/** User-facing product identity. Edit src/issueradar/brand.json to rename (ADR 0002). */
+/** User-facing product identity. Edit packages/core/src/issueradar/brand.json to rename (ADR 0002). */
 export const brand: Brand = brandJson;

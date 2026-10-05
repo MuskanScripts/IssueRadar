@@ -174,7 +174,8 @@ and a secret scan. The Action is tested by `action-selftest.yml`.
 ## Project layout
 
 ```
-src/issueradar/        Python core: CLI, config, models, demo data
+packages/core/src/issueradar/
+                       Python core: CLI, config, models, demo data
   brand.json           the product name and other user-facing identifiers
   config/defaults.yaml every GitHub limit, threshold and scoring weight
   demo/fixtures/       demo data, always labelled "Demo data"
@@ -191,6 +192,9 @@ tests/                 Python tests (never touch the network)
   fixtures/github/     recorded and documented GitHub responses
 scripts/               fixture recorder, benchmarks, release helpers
 web/                   React dashboard (Vite, TypeScript, Tailwind CSS)
+apps/                  the hosted platform: api/ (FastAPI), worker/ (Arq), web/ (Next.js)
+infra/compose/         runs the platform locally behind one proxy
+.importlinter          which parts of the code may import which
 site/                  landing page (static, GitHub Pages)
 template/              files for the GitHub Actions template repo
 action.yml             the GitHub Action

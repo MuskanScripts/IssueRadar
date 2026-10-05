@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The engine moved from `src/issueradar` to `packages/core/src/issueradar`. The `firstpr` package on PyPI, the GitHub Action and the Docker image are built from it exactly as before; the wheel has the same files.
+
+### Added
+
+- The start of the hosted platform in `apps/`: a FastAPI app with a health check, an Arq worker, a Next.js web app, a Caddy proxy and a Compose file that runs them together.
+- Import rules (`.importlinter`) checked in CI.
+
 ## [0.2.0] - 2026-10-03
 
 ### Added

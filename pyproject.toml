@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 # The distribution name and the CLI command below must match
-# src/issueradar/brand.json (see docs/adr/0002-brand-in-one-place.md).
+# packages/core/src/issueradar/brand.json (see docs/adr/0002-brand-in-one-place.md).
 name = "firstpr"
 version = "0.2.0"
 description = "Find open-source issues you can actually work on, then track the pull requests you open."
@@ -61,14 +61,14 @@ Homepage = "https://github.com/MuskanScripts/IssueRadar"
 Issues = "https://github.com/MuskanScripts/IssueRadar/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/issueradar"]
+packages = ["packages/core/src/issueradar"]
 # The built dashboard is copied here by scripts/bundle_web.py before a release
 # build. It is git-ignored, so it has to be listed as an artifact.
-artifacts = ["src/issueradar/web/**"]
+artifacts = ["packages/core/src/issueradar/web/**"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/issueradar", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
-artifacts = ["src/issueradar/web/**"]
+include = ["packages/core/src/issueradar", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+artifacts = ["packages/core/src/issueradar/web/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -79,7 +79,7 @@ asyncio_default_fixture_loop_scope = "function"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src", "tests", "apps/api/src", "apps/worker/src"]
+src = ["packages/core/src", "tests", "apps/api/src", "apps/worker/src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S", "PTH", "N"]
@@ -94,5 +94,5 @@ ignore = ["N818"]
 python_version = "3.11"
 strict = true
 packages = ["issueradar"]
-mypy_path = "src"
+mypy_path = "packages/core/src"
 plugins = ["pydantic.mypy"]

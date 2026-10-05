@@ -14,7 +14,7 @@ imports, package names and UI strings, renaming becomes a large, risky change.
   Python import package and internal identifiers and does not change with the
   brand.
 - Everything a user sees (product name, CLI command, tagline, demo label, env
-  var prefix) is read from `src/issueradar/brand.json`. Python reads it through
+  var prefix) is read from `packages/core/src/issueradar/brand.json`. Python reads it through
   `issueradar.brand`; the web app imports the same file.
 - The CLI command name must also appear in `pyproject.toml` (`[project.scripts]`),
   which cannot read JSON. A test fails if the two disagree.

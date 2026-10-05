@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "web" / "dist"
-TARGET = ROOT / "src" / "issueradar" / "web"
+TARGET = ROOT / "packages" / "core" / "src" / "issueradar" / "web"
 
 
 def main() -> None:

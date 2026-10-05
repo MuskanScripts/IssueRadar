@@ -1,6 +1,6 @@
 # Platform apps
 
-The FirstPR platform (the hosted website) is built here, next to the self-hosted CLI, which stays in `src/issueradar`.
+The FirstPR platform (the hosted website) is built here. The engine it shares with the self-hosted CLI lives in `packages/core`.
 
 | Folder | What it is | Run it with |
 |---|---|---|
@@ -41,6 +41,18 @@ npm run lint; npm run typecheck; npm run build
 
 The test against real Postgres and Redis runs when `FIRSTPR_TEST_DATABASE_URL` and `FIRSTPR_TEST_REDIS_URL` are set. CI sets both.
 
-## Why the CLI code has not moved
+## Import rules
 
-The plan puts the shared engine in `packages/core`. Moving `src/issueradar` now would change the PyPI package, the GitHub Action and the Docker image for no gain yet, because nothing here uses the engine. It moves in the last part of Step 1, before the sync worker starts using it in Step 3.
+`.importlinter` at the repository root says which code may import which, and CI checks it with `lint-imports`:
+
+- the engine (`issueradar`) never imports the platform apps
+- the API and the worker never import each other
+- scoring (`issueradar.engine`) never touches GitHub, the database or any interface
+- the GitHub client never depends on anything built on top of it
+
+To run it locally, install all three packages and import-linter, then run `lint-imports` from the repository root:
+
+```powershell
+python -m pip install -e . -e "apps/api[dev]" -e "apps/worker[dev]" import-linter
+lint-imports
+```

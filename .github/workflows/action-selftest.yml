@@ -5,9 +5,9 @@ name: Action self-test
 on:
   push:
     branches: [main]
-    paths: ["action.yml", "template/**", "src/**", "pyproject.toml", ".github/workflows/action-selftest.yml"]
+    paths: ["action.yml", "template/**", "packages/core/**", "pyproject.toml", ".github/workflows/action-selftest.yml"]
   pull_request:
-    paths: ["action.yml", "template/**", "src/**", "pyproject.toml", ".github/workflows/action-selftest.yml"]
+    paths: ["action.yml", "template/**", "packages/core/**", "pyproject.toml", ".github/workflows/action-selftest.yml"]
   workflow_dispatch:
 
 permissions:

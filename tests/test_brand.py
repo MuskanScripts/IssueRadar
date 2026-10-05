@@ -19,6 +19,6 @@ def test_env_names_use_prefix() -> None:
 
 
 def test_brand_name_not_hard_coded_in_python_sources() -> None:
-    sources = (ROOT / "src" / "issueradar").rglob("*.py")
+    sources = (ROOT / "packages" / "core" / "src" / "issueradar").rglob("*.py")
     offenders = [p.name for p in sources if BRAND.name in p.read_text(encoding="utf-8")]
     assert offenders == [], f"use BRAND.name instead of the literal name in {offenders}"

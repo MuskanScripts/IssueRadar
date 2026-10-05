@@ -12,7 +12,7 @@ from issueradar.config import Settings
 from issueradar.github import GitHubClient, ReadOnlyViolation
 from issueradar.github.guard import ensure_read_only_graphql, ensure_read_only_rest
 
-SRC = Path(__file__).resolve().parents[1] / "src" / "issueradar"
+SRC = Path(__file__).resolve().parents[1] / "packages" / "core" / "src" / "issueradar"
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE", "post", "OPTIONS", "HEAD"])

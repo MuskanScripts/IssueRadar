@@ -18,9 +18,9 @@
     "noEmit": true,
     "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "paths": {
-      "@core/*": ["../src/issueradar/*"],
+      "@core/*": ["../packages/core/src/issueradar/*"],
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "../src/issueradar/brand.json", "../src/issueradar/demo/fixtures/demo.json"]
+  "include": ["src", "../packages/core/src/issueradar/brand.json", "../packages/core/src/issueradar/demo/fixtures/demo.json"]
 }
