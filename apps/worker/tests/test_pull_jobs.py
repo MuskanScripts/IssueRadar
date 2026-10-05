@@ -117,7 +117,8 @@ async def test_a_change_of_status_notifies_and_merges_are_emailed(
     await jobs.track_pull(ctx, user_id, REPO, 5)
     sync_db.expire_all()
     kinds = [n.kind for n in sync_db.scalars(select(Notification).order_by(Notification.id))]
-    assert kinds == ["changes_requested", "pr_merged"] and len(resend.sent) == 2
+    assert [k for k in kinds if k != "badge"] == ["changes_requested", "pr_merged"]
+    assert len(resend.sent) == 2  # badges are in the app only
     row = sync_db.scalar(select(TrackedPull))
     assert row is not None and row.status == "merged"
     ws = sync_db.scalar(select(Workspace))
@@ -161,7 +162,8 @@ async def test_turning_email_off_stops_every_email(
         jobs.utcnow = lambda h=hour: datetime(2026, 10, 6, h, 30, tzinfo=UTC)  # type: ignore[assignment]
         await jobs.send_digests(ctx)
     jobs.utcnow = utcnow  # type: ignore[assignment]
-    assert len(sync_db.scalars(select(Notification)).all()) == 2
+    kinds = [n.kind for n in sync_db.scalars(select(Notification))]
+    assert [k for k in kinds if k != "badge"] == ["changes_requested", "pr_merged"]
     assert resend.sent == []
 
 

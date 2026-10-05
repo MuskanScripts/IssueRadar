@@ -66,6 +66,7 @@ class ProfileOut(BaseModel):
     packs: list[str]
     timezone: str
     onboarded: bool
+    public: bool = False
 
 
 class ProfileIn(BaseModel):
@@ -119,6 +120,7 @@ async def _read(db: AsyncSession, user: User) -> ProfileOut:
         packs=list(profile.packs or []),
         timezone=profile.timezone,
         onboarded=profile.onboarded_at is not None,
+        public=profile.public,
     )
 
 

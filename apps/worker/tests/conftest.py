@@ -118,6 +118,10 @@ class FakeQueue:
     async def enqueue_job(self, function: str, *args: Any, **kwargs: Any) -> None:
         self.queued.append((function, args, kwargs))
 
+    def __getattr__(self, name: str) -> Any:
+        # Every other Redis command goes to the fake Redis.
+        return getattr(self.redis, name)
+
 
 @pytest.fixture
 def db_url(tmp_path: Path) -> str:

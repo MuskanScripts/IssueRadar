@@ -111,6 +111,7 @@ async def test_scheduled_jobs_never_write_to_github(
         "check_workspaces",
         "track_active_users",
         "send_digests",
+        "flush_activity",
     }
     await jobs.sync_catalogue(ctx)
     await jobs.sync_active_users(ctx)
@@ -122,5 +123,6 @@ async def test_scheduled_jobs_never_write_to_github(
     await jobs.track_active_users(ctx)
     await jobs.track_user(ctx, user.id)  # what track_active_users queues
     await jobs.send_digests(ctx)
+    await jobs.flush_activity(ctx)
     assert any(method == "GET" for method, _ in user_github.calls)
     assert user_github.writes == []

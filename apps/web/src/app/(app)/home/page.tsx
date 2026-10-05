@@ -2,10 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { ActivityCalendar } from "@/components/activity-calendar";
 import { ComingSoon } from "@/components/coming-soon";
+import { ProgressStrip } from "@/components/progress-bits";
 import { FitBadge, IssueMeta, StateBadge } from "@/components/issue-bits";
 import { timeLeft, useNow } from "@/components/use-now";
-import { getJson, issuePath, logEvent, sendJson, type Today } from "@/lib/api";
+import { getJson, issuePath, logEvent, sendJson, type Progress, type Today } from "@/lib/api";
 import { useMe } from "../auth-gate";
 
 export default function HomePage() {
@@ -15,6 +17,11 @@ export default function HomePage() {
   const { data, error } = useQuery({
     queryKey: ["today"],
     queryFn: () => getJson<Today>("/api/v1/me/today", "today's pick"),
+  });
+  const progress = useQuery({
+    queryKey: ["progress", 17],
+    queryFn: () => getJson<Progress>("/api/v1/me/progress?weeks=17", "your progress"),
+    refetchInterval: 120_000,
   });
   const another = useMutation({
     mutationFn: () => sendJson<Today>("/api/v1/me/today/another", "find another issue"),
@@ -118,6 +125,21 @@ export default function HomePage() {
           </div>
           {another.error ? <p className="text-sm text-warn">{another.error.message}</p> : null}
         </section>
+      ) : null}
+
+      {progress.data ? (
+        <>
+          <ProgressStrip data={progress.data} />
+          <section className="rounded-lg border border-line bg-surface p-5">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h2 className="font-semibold">Your activity</h2>
+              <Link href="/progress" className="text-sm underline">
+                Full year and badges
+              </Link>
+            </div>
+            <ActivityCalendar days={progress.data.calendar} today={progress.data.today} />
+          </section>
+        </>
       ) : null}
 
       <ComingSoon feature="learned-ranking" title="Picks that learn from you" compact>

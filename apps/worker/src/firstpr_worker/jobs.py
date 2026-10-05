@@ -17,7 +17,7 @@ from typing import Any
 
 from sqlalchemy import func, select
 
-from firstpr_platform import accounts, notify, picks, plan, workspaces
+from firstpr_platform import accounts, notify, picks, plan, progress, workspaces
 from firstpr_platform.db import (
     CatalogueRepo,
     GitHubAccount,
@@ -33,7 +33,7 @@ from firstpr_platform.db import (
     Workspace,
     utcnow,
 )
-from firstpr_platform.github_user import UserGitHub
+from firstpr_platform.github_user import GitHubError, UserGitHub
 from firstpr_worker.catalogue import (
     APP_OWNER,
     Card,
@@ -42,6 +42,7 @@ from firstpr_worker.catalogue import (
     engine_user_id,
     pack_repos,
 )
+from issueradar.sync.normalize import parse_time
 
 # Must match BUDGET_PREFIX in apps/api.
 BUDGET_PREFIX = "firstpr:budget:"
@@ -330,6 +331,8 @@ async def handle_webhook(ctx: dict[str, Any], delivery_id: str) -> str:
 # ------------------------------------------------------------- workspaces
 
 POLL_EVERY_SECONDS = 10
+# Commits on a workspace branch are put on the calendar for this long after it started.
+COMMITS_FOR = timedelta(days=30)
 POLL_TRIES = 60
 
 
@@ -386,30 +389,48 @@ async def poll_workspace(ctx: dict[str, Any], workspace_id: int, tries: int) -> 
 
 
 async def check_workspaces(ctx: dict[str, Any]) -> int:
-    """Every few minutes: Codespace states, and pull requests opened on GitHub's own form.
+    """Every few minutes: Codespace states and running time, commits pushed to
+    FirstPR branches (for the activity calendar), and pull requests opened on
+    GitHub's own form.
 
     Only reads. Stopping idle Codespaces and deleting old ones is left to GitHub
     (idle timeout and retention period set when the Codespace was created).
     """
+    now = utcnow()
     async with ctx["db"]() as db:
         rows = list(
             await db.scalars(
                 select(Workspace).where(
-                    Workspace.status.in_((workspaces.WORKING, workspaces.READY))
+                    Workspace.status.in_((workspaces.WORKING, workspaces.READY, workspaces.PR_OPEN))
                 )
             )
         )
         checked = 0
         tokens: dict[int, str | None] = {}
+        zones: dict[int, Any] = {}
         for ws in rows:
             if ws.user_id not in tokens:
                 tokens[ws.user_id] = (await _token_for(ctx, db, ws.user_id))[0]
+                zones[ws.user_id] = picks.zone(await picks.load_taste(db, ws.user_id))
             token = tokens[ws.user_id]
             if token is None:
                 continue
+            zone = zones[ws.user_id]
             async with _user_github(ctx, token) as gh:
                 if ws.codespace_name and ws.codespace_state != "Deleted":
-                    await workspaces.check_codespace(db, ws, gh)
+                    state = await workspaces.check_codespace(db, ws, gh)
+                    ended = progress.codespace_tick(ws, state, now)
+                    if ended is not None and ended[1] > 0:
+                        day = ended[0].astimezone(zone).date().isoformat()
+                        await progress.add_activity(db, ws.user_id, day, codespace_minutes=ended[1])
+                    await db.commit()
+                if (
+                    ws.fork_full_name
+                    and ws.branch
+                    and ws.base_sha
+                    and now - ws.created_at < COMMITS_FOR
+                ):
+                    await _count_commits(db, ws, gh, zone)
                 if ws.status == workspaces.READY and ws.fork_full_name and ws.branch:
                     pull = await gh.open_pull(
                         ws.repo_full_name, f"{ws.fork_full_name.split('/')[0]}:{ws.branch}"
@@ -419,6 +440,26 @@ async def check_workspaces(ctx: dict[str, Any]) -> int:
                         await db.commit()
             checked += 1
     return checked
+
+
+async def _count_commits(db: Any, ws: Workspace, gh: UserGitHub, zone: Any) -> None:
+    """Put commits pushed to the workspace branch on the calendar, each once."""
+    try:
+        diff = await gh.compare(ws.fork_full_name or "", ws.base_sha or "", ws.branch or "")
+    except GitHubError:
+        return
+    seen = set(ws.counted_commits or [])
+    for commit in diff.commits:
+        sha = str(commit.get("sha") or "")
+        when = parse_time((commit.get("commit") or {}).get("author", {}).get("date"))
+        if not sha or sha in seen or when is None:
+            continue
+        await progress.add_activity(
+            db, ws.user_id, when.astimezone(zone).date().isoformat(), commits=1
+        )
+        seen.add(sha)
+    ws.counted_commits = sorted(seen)
+    await db.commit()
 
 
 async def _workspace_problem(ctx: dict[str, Any], db: Any, ws: Workspace) -> None:
@@ -465,6 +506,7 @@ async def _store_pulls(
         for row in await db.scalars(select(TrackedPull).where(TrackedPull.user_id == user_id))
     }
     changes: list[tuple[str, str | None, Tracked]] = []
+    awards: list[tuple[str, str, str]] = []  # reason, source, note
     for item in found:
         facts, status = item.facts, item.status
         key = (facts.repo.lower(), facts.number)
@@ -501,6 +543,7 @@ async def _store_pulls(
                 Workspace.pr_number == facts.number,
             )
         )
+        awards += _awards_for(item, old, ws)
         if ws is not None:
             ws.pr_state = (
                 "merged"
@@ -510,6 +553,10 @@ async def _store_pulls(
     await db.commit()
 
     notes: list[Notification] = []
+    for reason, source, why in awards:
+        await progress.award(db, user_id, reason, source, why)
+    if awards:
+        notes += await _badges(db, user_id)
     for new, old, item in changes:
         # Only changes count: the first time a pull request is seen is not news.
         if old is None or new not in notify.PR_KINDS:
@@ -530,6 +577,73 @@ async def _store_pulls(
             notes.append(note)
     await _email_now(ctx, db, user_id, notes)
     return notes
+
+
+def _awards_for(item: Tracked, old: str | None, ws: Workspace | None) -> list[tuple[str, str, str]]:
+    """XP for accepted work only. Pull requests made through FirstPR count from the
+    start; others only for changes FirstPR saw happen (not old merges found by the
+    first search)."""
+    facts, new = item.facts, item.status.status.value
+    seen_change = old is not None and old != new
+    key = f"pr:{facts.repo.lower()}#{facts.number}"
+    name = f"{facts.repo}#{facts.number}"
+    out = []
+    if ws is not None and ws.practice:
+        out.append(("practice_done", f"practice:{ws.id}", f"Practice pull request {name}"))
+    if new == "merged" and (ws is not None or seen_change):
+        out.append(("pr_merged", f"{key}:merged", f"Merged: {name}"))
+    if new == "approved" and (ws is not None or seen_change):
+        out.append(("pr_approved", f"{key}:approved", f"Approved: {name}"))
+    return out
+
+
+async def _badges(db: Any, user_id: int, best_streak: int | None = None) -> list[Notification]:
+    notes = []
+    for badge in await progress.check_badges(db, user_id, best_streak):
+        note = await notify.add(
+            db,
+            user_id,
+            "badge",
+            f"New badge: {badge.name}",
+            badge.description,
+            dedupe_key=f"badge:{badge.key}",
+            link="/progress",
+        )
+        if note is not None:
+            notes.append(note)
+    return notes
+
+
+ACTIVITY_PREFIX = "firstpr:activity:"
+ACTIVITY_DIRTY = "firstpr:activity:dirty"
+
+
+async def flush_activity(ctx: dict[str, Any]) -> int:
+    """Every 10 minutes: move site minutes counted in Redis to daily_activity, then
+    check the streak badge. Each Redis counter is read and deleted in one step, so
+    a minute is never counted twice."""
+    redis = ctx["redis"]
+    users = await redis.smembers(ACTIVITY_DIRTY)
+    moved = 0
+    async with ctx["db"]() as db:
+        for raw in users:
+            user_id = int(raw)
+            await redis.srem(ACTIVITY_DIRTY, raw)
+            async for key in redis.scan_iter(match=f"{ACTIVITY_PREFIX}{user_id}:*"):
+                name = key.decode() if isinstance(key, bytes) else str(key)
+                value = await redis.getdel(name)
+                minutes = int(value or 0)
+                if minutes:
+                    await progress.add_activity(
+                        db, user_id, name.rsplit(":", 1)[1], web_minutes=minutes
+                    )
+                    moved += minutes
+            await db.commit()
+            taste = await picks.load_taste(db, user_id)
+            today = picks.local_day(taste, utcnow())
+            known = await progress.days(db, user_id, today - timedelta(days=400), today)
+            await _badges(db, user_id, progress.streak(known, today).best)
+    return moved
 
 
 async def _track(ctx: dict[str, Any], user_id: int, only: tuple[str, int] | None = None) -> str:
