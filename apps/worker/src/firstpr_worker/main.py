@@ -24,6 +24,7 @@ from arq import cron, func
 from arq.connections import RedisSettings
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from firstpr_platform.analytics import Analytics
 from firstpr_platform.crypto import TokenBox
 from firstpr_platform.db import session_factory
 from firstpr_platform.github_app import AppTokenSource
@@ -95,6 +96,7 @@ async def startup(ctx: dict[str, Any]) -> None:
         signing_key(settings.token_keys.get_secret_value()),
         api_url=settings.resend_url,
     )
+    ctx["analytics"] = Analytics(settings.posthog_key, settings.posthog_host)
     await heartbeat(ctx)
     await seed_catalogue(ctx)
     await cards_if_empty(ctx)
