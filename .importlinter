@@ -1,13 +1,23 @@
 [importlinter]
 root_packages =
     issueradar
+    firstpr_platform
     firstpr_api
     firstpr_worker
 
 [importlinter:contract:core-without-platform]
-name = The engine never imports the platform apps
+name = The engine never imports the platform
 type = forbidden
 source_modules = issueradar
+forbidden_modules =
+    firstpr_platform
+    firstpr_api
+    firstpr_worker
+
+[importlinter:contract:shared-below-apps]
+name = Shared platform code never imports the API or the worker
+type = forbidden
+source_modules = firstpr_platform
 forbidden_modules =
     firstpr_api
     firstpr_worker

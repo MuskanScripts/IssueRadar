@@ -17,6 +17,7 @@ services:
       POSTGRES_DB: firstpr
     volumes:
       - postgres:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/10-catalogue.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U firstpr -d firstpr"]
       interval: 5s
@@ -55,10 +56,20 @@ services:
       context: ../..
       dockerfile: apps/worker/Dockerfile
     environment:
+      FIRSTPR_DATABASE_URL: postgresql+psycopg://firstpr:firstpr@postgres:5432/firstpr
+      FIRSTPR_CATALOGUE_DATABASE_URL: postgresql+psycopg://firstpr:firstpr@postgres:5432/firstpr_catalogue
       FIRSTPR_REDIS_URL: redis://redis:6379/0
+    # The GitHub App's ID and private key, and the same keys as the API.
+    env_file:
+      - path: .env
+        required: false
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
+      api:
+        condition: service_started   # the API applies the platform migrations
 
   web:
     build:

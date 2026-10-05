@@ -10,10 +10,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session as OrmSession
 
-from conftest import FakeGitHub, csrf, sign_in
-from firstpr_api.db import GitHubAccount, Session, User, utcnow
+from conftest import FakeGitHub, FakeJobs, csrf, sign_in
 from firstpr_api.main import create_app
 from firstpr_api.settings import Settings
+from firstpr_platform.db import GitHubAccount, Session, User, utcnow
 
 
 def test_login_sends_the_browser_to_github_with_state_and_pkce(client: TestClient) -> None:
@@ -44,6 +44,7 @@ def test_sign_in_creates_user_session_and_encrypted_tokens(
     body = me.json()
     assert body["handle"] == "MuskanScripts" and body["email"] == "muskan@example.com"
     assert body["github"] == {"login": "MuskanScripts", "status": "connected"}
+    assert body["role"] == "user"
     assert "ghu_" not in me.text and "ghr_" not in me.text
 
     account = sync_db.scalar(select(GitHubAccount))
@@ -199,3 +200,20 @@ def test_sign_in_off_until_configured(sync_db: OrmSession, settings: Settings) -
     with TestClient(create_app(plain, redis=fakeredis.FakeAsyncRedis())) as client:
         assert client.get("/api/v1/auth/github/login", follow_redirects=False).status_code == 503
         assert client.get("/api/v1/me").status_code == 401
+
+
+def test_admin_logins_get_the_admin_role(
+    sync_db: OrmSession, settings: Settings, github: FakeGitHub
+) -> None:
+    import fakeredis
+
+    admin_settings = settings.model_copy(update={"admin_logins": " muskanscripts , other"})
+    app = create_app(
+        admin_settings,
+        redis=fakeredis.FakeAsyncRedis(),
+        github_transport=httpx.MockTransport(github.handler),
+        jobs=FakeJobs(),
+    )
+    with TestClient(app, base_url="http://testserver") as client:
+        sign_in(client)
+        assert client.get("/api/v1/me").json()["role"] == "admin"

@@ -193,6 +193,7 @@ tests/                 Python tests (never touch the network)
 scripts/               fixture recorder, benchmarks, release helpers
 web/                   React dashboard (Vite, TypeScript, Tailwind CSS)
 apps/                  the hosted platform: api/ (FastAPI), worker/ (Arq), web/ (Next.js)
+packages/platform/      code the platform API and worker share: tables, migrations, GitHub tokens
 infra/compose/         runs the platform locally behind one proxy
 .importlinter          which parts of the code may import which
 site/                  landing page (static, GitHub Pages)

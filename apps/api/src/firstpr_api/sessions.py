@@ -16,8 +16,8 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from firstpr_api.db import Session, User, utcnow
 from firstpr_api.settings import Settings
+from firstpr_platform.db import Session, User, utcnow
 
 SESSION_COOKIE = "firstpr_session"
 CSRF_COOKIE = "firstpr_csrf"

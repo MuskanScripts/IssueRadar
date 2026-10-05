@@ -55,7 +55,7 @@ def default_checks(engine: AsyncEngine, redis: Redis, stale_after: int) -> dict[
     return {"database": database, "redis": redis_ping, "worker": worker}
 
 
-async def _run(check: Check) -> str:
+async def run_check(check: Check) -> str:
     try:
         return await asyncio.wait_for(check(), timeout=TIMEOUT_SECONDS)
     except TimeoutError:
@@ -69,7 +69,9 @@ async def _run(check: Check) -> str:
 async def health(request: Request, response: Response) -> Health:
     checks: dict[str, Check] = request.app.state.checks
     names = list(checks)
-    results = dict(zip(names, await asyncio.gather(*(_run(checks[n]) for n in names)), strict=True))
+    results = dict(
+        zip(names, await asyncio.gather(*(run_check(checks[n]) for n in names)), strict=True)
+    )
     ok = all(results.get(name) == "ok" for name in REQUIRED)
     if not ok:
         response.status_code = 503

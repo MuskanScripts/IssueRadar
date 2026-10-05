@@ -79,7 +79,13 @@ asyncio_default_fixture_loop_scope = "function"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["packages/core/src", "tests", "apps/api/src", "apps/worker/src"]
+src = [
+  "packages/core/src",
+  "packages/platform/src",
+  "tests",
+  "apps/api/src",
+  "apps/worker/src",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S", "PTH", "N"]
@@ -88,7 +94,9 @@ ignore = ["N818"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
-"apps/*/tests/**" = ["S101"]
+# Tests use made-up tokens and secrets.
+"apps/*/tests/**" = ["S101", "S105", "S106"]
+"packages/platform/tests/**" = ["S101", "S105", "S106"]
 
 [tool.mypy]
 python_version = "3.11"

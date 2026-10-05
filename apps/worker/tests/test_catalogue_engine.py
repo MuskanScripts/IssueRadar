@@ -1,0 +1,61 @@
+"""The real engine behind the worker: watchlist mirroring and a full sync.
+
+Uses the core test suite's fake GitHub and scenario (repo-root tests/), so the
+whole sync path runs: lists, ETags, enrichment and health. SQLite by default;
+Postgres when FIRSTPR_TEST_CATALOGUE_URL is set (CI sets it).
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+import pytest
+from sqlalchemy import select
+
+CORE_TESTS = Path(__file__).resolve().parents[3] / "tests"
+sys.path.insert(0, str(CORE_TESTS))
+
+from fake_github import FakeGitHub  # noqa: E402
+from firstpr_worker.catalogue import APP_OWNER, Catalogue, engine_user_id  # noqa: E402
+from issueradar.storage.models import Issue, Watchlist  # noqa: E402
+from scenario import REPO, build  # noqa: E402
+
+
+@pytest.fixture
+def catalogue_url(tmp_path: Path) -> str:
+    return os.environ.get("FIRSTPR_TEST_CATALOGUE_URL") or f"sqlite:///{tmp_path / 'catalogue.db'}"
+
+
+def test_watchlists_mirror_each_owner(catalogue_url: str) -> None:
+    catalogue = Catalogue(catalogue_url, pause_share=0.2)
+    owner = engine_user_id(9)
+    catalogue.set_watchlist(owner, {"a/one", "b/two"})
+    catalogue.set_watchlist(owner, {"B/two", "c/three"})
+    with catalogue.db.sessions() as session:
+        names = set(
+            session.scalars(select(Watchlist.repo_full_name).where(Watchlist.user_id == owner))
+        )
+    assert names == {"b/two", "c/three"}
+    catalogue.clear_watchlist(owner)
+    with catalogue.db.sessions() as session:
+        assert session.scalar(select(Watchlist).where(Watchlist.user_id == owner)) is None
+
+
+async def test_full_sync_then_mostly_304s(catalogue_url: str) -> None:
+    fake = FakeGitHub()
+    build(fake)
+    catalogue = Catalogue(catalogue_url, pause_share=0.2, transport=fake.transport())
+
+    first = await catalogue.sync(APP_OWNER, {REPO}, "ghs_hour_one", "app")
+    assert first.status == "completed"
+    assert [(o.full_name, o.status) for o in first.outcomes] == [(REPO, "synced")]
+    assert first.outcomes[0].open_issues > 0
+    with catalogue.db.sessions() as session:
+        assert session.scalar(select(Issue).limit(1)) is not None
+
+    # An hour later the installation token is a new one; ETags still apply.
+    second = await catalogue.sync(APP_OWNER, {REPO}, "ghs_hour_two", "app")
+    assert second.status == "completed"
+    assert second.budget["not_modified"] > 0

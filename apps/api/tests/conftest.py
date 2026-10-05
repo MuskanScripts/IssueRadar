@@ -14,10 +14,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session as OrmSession
 
-from firstpr_api.crypto import TokenBox
-from firstpr_api.db import Base
 from firstpr_api.main import create_app
 from firstpr_api.settings import Settings
+from firstpr_platform.crypto import TokenBox
+from firstpr_platform.db import Base
 
 
 class FakeGitHub:
@@ -29,6 +29,11 @@ class FakeGitHub:
         self.issued = 0
         self.requests: list[httpx.Request] = []
         self.user = {"id": 4242, "login": "MuskanScripts", "name": "Muskan", "email": None}
+        self.repos = {
+            "pallets/flask": {"full_name": "pallets/flask", "private": False},
+            "vitejs/vite": {"full_name": "vitejs/vite", "private": False},
+            "muskanscripts/notes": {"full_name": "MuskanScripts/notes", "private": True},
+        }
 
     def _tokens(self) -> dict[str, Any]:
         self.issued += 1
@@ -61,6 +66,12 @@ class FakeGitHub:
             return httpx.Response(
                 200, json={**self.user, "avatar_url": "https://example.com/a.png"}
             )
+        if url.startswith("https://api.github.com/repos/"):
+            name = url.removeprefix("https://api.github.com/repos/")
+            repo = self.repos.get(name.lower())
+            if repo is None:
+                return httpx.Response(404, json={"message": "Not Found"})
+            return httpx.Response(200, json=repo)
         if url == "https://api.github.com/user/emails":
             return httpx.Response(
                 200, json=[{"email": "muskan@example.com", "primary": True, "verified": True}]
@@ -68,16 +79,36 @@ class FakeGitHub:
         return httpx.Response(404, json={"message": "Not Found"})
 
 
+class FakeJobs:
+    """Records what the API puts on the worker's queue."""
+
+    def __init__(self) -> None:
+        self.queued: list[tuple[str, tuple[Any, ...], dict[str, Any]]] = []
+
+    async def enqueue_job(self, function: str, *args: Any, **kwargs: Any) -> None:
+        self.queued.append((function, args, kwargs))
+
+    async def aclose(self) -> None:
+        pass
+
+
+@pytest.fixture
+def jobs() -> FakeJobs:
+    return FakeJobs()
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
         github_client_id="Iv1.test",
-        github_client_secret="test-secret",  # noqa: S106 - test value
+        github_client_secret="test-secret",
         token_keys=TokenBox.new_key(),
         cookie_secure=False,
         public_url="http://testserver",
         github_verify_every_seconds=300,
+        github_webhook_secret="webhook-test-secret",
+        max_watches_per_user=3,
     )
 
 
@@ -96,11 +127,14 @@ def github() -> FakeGitHub:
 
 
 @pytest.fixture
-def client(settings: Settings, sync_db: OrmSession, github: FakeGitHub) -> Iterator[TestClient]:
+def client(
+    settings: Settings, sync_db: OrmSession, github: FakeGitHub, jobs: FakeJobs
+) -> Iterator[TestClient]:
     app = create_app(
         settings,
         redis=fakeredis.FakeAsyncRedis(),
         github_transport=httpx.MockTransport(github.handler),
+        jobs=jobs,
     )
     with TestClient(app, base_url="http://testserver") as test_client:
         yield test_client

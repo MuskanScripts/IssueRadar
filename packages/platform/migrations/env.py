@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
+import os
+
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-from firstpr_api.db import Base
-from firstpr_api.settings import Settings
+from firstpr_platform.db import Base
+
+DEFAULT_URL = "postgresql+psycopg://firstpr:firstpr@localhost:5432/firstpr"
 
 target_metadata = Base.metadata
 
 
 def run() -> None:
-    url = context.config.get_main_option("sqlalchemy.url") or Settings().database_url
+    url = (
+        context.config.get_main_option("sqlalchemy.url")
+        or os.environ.get("FIRSTPR_DATABASE_URL")
+        or DEFAULT_URL
+    )
     engine = create_engine(url, poolclass=pool.NullPool)
     with engine.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
