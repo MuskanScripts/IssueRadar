@@ -21,6 +21,7 @@ On github.com/settings/apps/new (or under your organisation):
 | --- | --- |
 | Homepage URL | `https://<your-domain>` |
 | Callback URL | `https://<your-domain>/api/v1/auth/github/callback` |
+| Setup URL | `https://<your-domain>/api/v1/github/installed`, with Redirect on update ticked |
 | Request user authorization (OAuth) during installation | off |
 | Expire user authorization tokens | on |
 | Webhook URL | `https://<your-domain>/api/v1/webhooks/github` |
