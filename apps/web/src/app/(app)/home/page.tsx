@@ -2,8 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getHealth } from "@/lib/api";
+import { useMe } from "../auth-gate";
 
 export default function HomePage() {
+  const { data: me } = useMe();
   const { data, error, isFetching, refetch } = useQuery({
     queryKey: ["health"],
     queryFn: () => getHealth(),
@@ -12,10 +14,9 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col gap-4">
-      <h1 className="text-3xl font-bold">Home</h1>
+      <h1 className="text-3xl font-bold">Welcome, {me?.name ?? me?.handle}</h1>
       <p className="text-ink-2">
-        The daily pick, your pull requests and your calendar will live here. For now this page
-        shows that the browser can reach the API through the proxy.
+        The daily pick, your pull requests and your calendar will live here, starting in Step 4.
       </p>
       <section className="rounded-lg border border-line bg-surface p-5">
         <div className="mb-2 flex items-center justify-between gap-4">

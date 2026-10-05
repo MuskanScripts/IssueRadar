@@ -5,34 +5,60 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from firstpr_api import __version__, health
+from firstpr_api import __version__, auth, health
+from firstpr_api.crypto import TokenBox
+from firstpr_api.db import session_factory
+from firstpr_api.github_oauth import GitHubOAuth
 from firstpr_api.settings import Settings
 
 
 def create_app(
-    settings: Settings | None = None, checks: dict[str, health.Check] | None = None
+    settings: Settings | None = None,
+    *,
+    checks: dict[str, health.Check] | None = None,
+    engine: AsyncEngine | None = None,
+    redis: Redis | None = None,
+    github_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
-    """Build the app. Tests pass `checks` to run without Postgres or Redis."""
+    """Build the app. Tests pass their own engine, Redis, GitHub transport or checks."""
     settings = settings or Settings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        if checks is not None:
-            app.state.checks = checks
-            yield
-            return
-        engine = create_async_engine(settings.database_url, pool_pre_ping=True)
-        redis = Redis.from_url(settings.redis_url)
-        app.state.checks = health.default_checks(engine, redis, settings.worker_stale_after_seconds)
+        own_engine = engine is None
+        own_redis = redis is None
+        db_engine = engine or create_async_engine(settings.database_url, pool_pre_ping=True)
+        cache = redis or Redis.from_url(settings.redis_url)
+        app.state.settings = settings
+        app.state.db = session_factory(db_engine)
+        app.state.redis = cache
+        app.state.checks = checks or health.default_checks(
+            db_engine, cache, settings.worker_stale_after_seconds
+        )
+        app.state.token_box = None
+        app.state.oauth = None
+        if settings.sign_in_configured:
+            app.state.token_box = TokenBox(settings.token_keys.get_secret_value())
+            app.state.oauth = GitHubOAuth(
+                settings.github_client_id,
+                settings.github_client_secret.get_secret_value(),
+                settings.callback_url,
+                transport=github_transport,
+                web_url=settings.github_web_url,
+                api_url=settings.github_api_url,
+            )
         try:
             yield
         finally:
-            await redis.aclose()
-            await engine.dispose()
+            if own_redis:
+                await cache.aclose()
+            if own_engine:
+                await db_engine.dispose()
 
     app = FastAPI(
         title="FirstPR API",
@@ -44,5 +70,6 @@ def create_app(
     )
     v1 = APIRouter(prefix="/api/v1")
     v1.include_router(health.router)
+    v1.include_router(auth.router)
     app.include_router(v1)
     return app

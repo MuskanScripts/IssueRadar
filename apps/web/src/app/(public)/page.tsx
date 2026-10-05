@@ -1,5 +1,6 @@
-import Link from "next/link";
-import { serverApiUrl, type Health } from "@/lib/api";
+import { Suspense } from "react";
+import { serverApiUrl, signInUrl, type Health } from "@/lib/api";
+import { SignInNotice } from "./signin-notice";
 
 // Rendered on the server and cached for 30 seconds, like every public page will be.
 export const revalidate = 30;
@@ -19,13 +20,18 @@ export default async function IntroPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-12">
       <header className="flex items-center justify-between gap-4">
         <span className="text-xl font-bold">FirstPR</span>
-        <Link
-          href="/home"
+        {/* A plain link: the API answers with a redirect to GitHub. */}
+        <a
+          href={signInUrl("/home")}
           className="rounded-md bg-accent px-4 py-2 font-semibold text-accent-ink hover:opacity-90"
         >
-          Open the app
-        </Link>
+          Sign in with GitHub
+        </a>
       </header>
+
+      <Suspense fallback={null}>
+        <SignInNotice />
+      </Suspense>
 
       <section className="flex flex-col gap-4">
         <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl">

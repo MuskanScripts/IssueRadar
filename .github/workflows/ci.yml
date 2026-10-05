@@ -168,6 +168,15 @@ jobs:
         run: |
           (cd apps/api && mypy)
           (cd apps/worker && mypy)
+      - name: Migrations match the models
+        working-directory: apps/api
+        env:
+          FIRSTPR_DATABASE_URL: ${{ env.FIRSTPR_TEST_DATABASE_URL }}
+        run: |
+          alembic upgrade head
+          alembic check
+          alembic downgrade base
+          alembic upgrade head
       - name: Test
         run: |
           (cd apps/api && pytest)

@@ -38,6 +38,12 @@ services:
     environment:
       FIRSTPR_DATABASE_URL: postgresql+psycopg://firstpr:firstpr@postgres:5432/firstpr
       FIRSTPR_REDIS_URL: redis://redis:6379/0
+      FIRSTPR_PUBLIC_URL: http://localhost:8080
+      FIRSTPR_COOKIE_SECURE: "false"   # plain http on localhost only
+    # GitHub App keys and the token key go in infra/compose/.env (see .env.example).
+    env_file:
+      - path: .env
+        required: false
     depends_on:
       postgres:
         condition: service_healthy
