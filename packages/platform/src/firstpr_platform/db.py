@@ -21,14 +21,16 @@ from sqlalchemy import (
     Index,
     Integer,
     LargeBinary,
-    String,
-    Text,
     TypeDecorator,
     UniqueConstraint,
     text,
 )
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+# Every text column drops NUL characters, which PostgreSQL cannot store.
+from issueradar.storage.types import SafeString as String
+from issueradar.storage.types import SafeText as Text
 
 
 def database_url(url: str) -> str:

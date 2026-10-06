@@ -27,6 +27,7 @@ All notable changes to this project are documented here. The format follows
 ### Fixed
 
 - The half-hourly catalogue sync was stopped after 5 minutes every time (scheduled jobs did not get the 30-minute limit) and then started over from the first repo, so a first sync with many repos never finished and Explore stayed empty. A sync now stops by itself after 20 minutes between two repos, saves what it finished, and the next run carries on from there; a run that was killed is carried on too. Two catalogue syncs can no longer run at the same time.
+- A GitHub issue with a NUL character in its text (vitejs/vite#21157 has one) failed the whole catalogue sync on PostgreSQL, which cannot store NUL in text columns. Every text column in both databases now drops NUL characters before writing.
 
 ## [0.2.0] - 2026-10-03
 
