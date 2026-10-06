@@ -117,3 +117,26 @@ def test_the_catalogue_database_is_created_when_missing() -> None:
     with admin.connect() as conn:
         conn.execute(text(f'DROP DATABASE "{target.database}"'))
     admin.dispose()
+
+
+async def test_an_issue_with_nul_characters_does_not_stop_the_sync(catalogue_url: str) -> None:
+    # PostgreSQL text columns refuse NUL; GitHub lets them through in issue text.
+    from fake_github import example_issue, example_repo
+
+    name = "nul-test/repo"
+    fake = FakeGitHub()
+    fake.add(f"/repos/{name}", example_repo(name))
+    listing = {"state": "open", "sort": "created", "direction": "asc"}
+    issue = example_issue(
+        7, id=43_000_000_007, title="Crash on \x00 input", body="Steps:\x00\x00 run it"
+    )
+    fake.add_list(f"/repos/{name}/issues", [issue], listing, page_size=100)
+    fake.add_list(f"/repos/{name}/pulls", [], listing, page_size=100)
+    catalogue = Catalogue(catalogue_url, pause_share=0.2, transport=fake.transport())
+
+    result = await catalogue.sync(APP_OWNER, {name}, "ghs_token", "app")
+    assert [(o.full_name, o.status) for o in result.outcomes] == [(name, "synced")]
+    with catalogue.db.sessions() as session:
+        stored = session.scalar(select(Issue).where(Issue.github_id == 43_000_000_007))
+        assert stored is not None
+        assert (stored.title, stored.body) == ("Crash on  input", "Steps: run it")

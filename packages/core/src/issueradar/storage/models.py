@@ -10,8 +10,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+# Every text column drops NUL characters, which PostgreSQL cannot store.
+from issueradar.storage.types import SafeString as String
+from issueradar.storage.types import SafeText as Text
 
 LOCAL_USER_ID = 1
 
