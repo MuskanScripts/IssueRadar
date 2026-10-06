@@ -194,18 +194,45 @@ async def make_daily_picks(ctx: dict[str, Any]) -> int:
     return made
 
 
+SYNC_LOCK_PREFIX = "firstpr:sync-lock:"
+# Longer than a sync job may run, so a worker that died cannot hold the lock for long.
+SYNC_LOCK_SECONDS = 35 * 60
+
+
+def _time_budget(ctx: dict[str, Any]) -> float | None:
+    settings = ctx.get("settings")
+    return float(settings.sync_time_budget_seconds) if settings is not None else None
+
+
+async def _lock(ctx: dict[str, Any], key: str) -> bool:
+    return bool(await ctx["redis"].set(SYNC_LOCK_PREFIX + key, "1", nx=True, ex=SYNC_LOCK_SECONDS))
+
+
+async def _unlock(ctx: dict[str, Any], key: str) -> None:
+    await ctx["redis"].delete(SYNC_LOCK_PREFIX + key)
+
+
 async def sync_catalogue(ctx: dict[str, Any]) -> str:
     """The shared catalogue, with the app's own installation token."""
     tokens = ctx.get("app_tokens")
     if tokens is None:
         return "skipped: the GitHub App is not set up"
-    async with ctx["db"]() as db:
-        sync_plan = await plan.build(db)
-    token = await tokens.token()
-    result = await ctx["catalogue"].sync(APP_OWNER, sync_plan.app, token, "app")
-    await _record(ctx, result, sync_plan.app, plan.APP)
-    await _export(ctx, result)
-    await _budget(ctx, "app", result.budget)
+    # The half-hourly run and a "sync soon" from the API must not overlap: both
+    # would carry on the same engine run.
+    if not await _lock(ctx, "app"):
+        return "skipped: a catalogue sync is already running"
+    try:
+        async with ctx["db"]() as db:
+            sync_plan = await plan.build(db)
+        token = await tokens.token()
+        result = await ctx["catalogue"].sync(
+            APP_OWNER, sync_plan.app, token, "app", _time_budget(ctx)
+        )
+        await _record(ctx, result, sync_plan.app, plan.APP)
+        await _export(ctx, result)
+        await _budget(ctx, "app", result.budget)
+    finally:
+        await _unlock(ctx, "app")
     return f"{result.status}: {len(result.outcomes)} of {len(sync_plan.app)} repos"
 
 
@@ -227,10 +254,17 @@ async def sync_user(ctx: dict[str, Any], user_id: int) -> str:
         token = await accounts.usable_token(db, user.github, box, oauth)
     if token is None:
         return "skipped: GitHub access needs reconnecting"
-    result = await ctx["catalogue"].sync(owner, repos, token, f"user:{user_id}")
-    await _record(ctx, result, repos, plan.USER)
-    await _export(ctx, result)
-    await _budget(ctx, f"user:{user_id}", result.budget)
+    if not await _lock(ctx, f"user:{user_id}"):
+        return "skipped: a sync for this person is already running"
+    try:
+        result = await ctx["catalogue"].sync(
+            owner, repos, token, f"user:{user_id}", _time_budget(ctx)
+        )
+        await _record(ctx, result, repos, plan.USER)
+        await _export(ctx, result)
+        await _budget(ctx, f"user:{user_id}", result.budget)
+    finally:
+        await _unlock(ctx, f"user:{user_id}")
     return f"{result.status}: {len(result.outcomes)} of {len(repos)} repos"
 
 

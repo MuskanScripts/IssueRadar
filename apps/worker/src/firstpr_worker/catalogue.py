@@ -171,7 +171,12 @@ class Catalogue:
             session.execute(delete(Watchlist).where(Watchlist.user_id == owner))
 
     async def sync(
-        self, owner: int, repos: set[str], token: str, cache_identity: str
+        self,
+        owner: int,
+        repos: set[str],
+        token: str,
+        cache_identity: str,
+        time_budget: float | None = None,
     ) -> SyncResult:
         self.set_watchlist(owner, repos)
         if not repos:
@@ -190,6 +195,7 @@ class Catalogue:
                 user_id=owner,
                 enricher=Enricher(self.db, client, self.settings, self.rules),
                 radar=Radar(self.db, self.settings, self.rules, None),
+                time_budget=time_budget,
             )
             report = await service.run()
         core = report.budget.resources.get("core") if report.budget else None

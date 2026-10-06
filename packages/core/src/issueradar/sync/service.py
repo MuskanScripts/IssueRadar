@@ -14,6 +14,7 @@ How it keeps the API budget low (ADR 0012):
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -86,8 +87,12 @@ class SyncService:
         clock: Callable[[], datetime] = utcnow,
         enricher: Enricher | None = None,
         radar: Radar | None = None,
+        time_budget: float | None = None,
     ) -> None:
         self.db = db
+        # Seconds this run may take. When it runs out, the run stops between
+        # repos as "interrupted", and the next run carries on where it stopped.
+        self.time_budget = time_budget
         self.client = client
         self.settings = settings
         self.user_id = user_id
@@ -100,8 +105,17 @@ class SyncService:
         report = SyncReport(run_id=run_id, status="completed", resumed=resumed)
         start_requests = self.client.budget.summary().total_requests
         start_not_modified = self.client.budget.not_modified
+        started = time.monotonic()
 
         for full_name in todo:
+            if (
+                self.time_budget is not None
+                and report.outcomes
+                and time.monotonic() - started >= self.time_budget
+            ):
+                report.status = "interrupted"
+                report.message = "Out of time for this run; the next sync carries on from here."
+                break
             try:
                 outcome = await self._sync_repo(full_name)
                 if outcome.status == "synced":
@@ -151,7 +165,11 @@ class SyncService:
             watched = self._watched(session)
             previous = session.scalar(
                 select(SyncRun)
-                .where(SyncRun.user_id == self.user_id, SyncRun.status == "interrupted")
+                # "running" here is a run that was killed before it could finish.
+                .where(
+                    SyncRun.user_id == self.user_id,
+                    SyncRun.status.in_(("interrupted", "running")),
+                )
                 .order_by(SyncRun.id.desc())
             )
             if previous is not None:

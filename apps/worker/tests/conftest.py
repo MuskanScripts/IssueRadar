@@ -58,6 +58,7 @@ class FakeCatalogue:
         self.calls: list[tuple[int, set[str], str, str]] = []
         self.cleared: list[int] = []
         self.interrupt_after: int | None = None
+        self.time_budgets: list[float | None] = []
         # What cards() returns for each repo; repos not listed have no open issues.
         self.issues: dict[str, list[Card]] = {}
         self.pulls: list[Tracked] = []
@@ -83,8 +84,16 @@ class FakeCatalogue:
     def clear_watchlist(self, owner: int) -> None:
         self.cleared.append(owner)
 
-    async def sync(self, owner: int, repos: set[str], token: str, identity: str) -> SyncResult:
+    async def sync(
+        self,
+        owner: int,
+        repos: set[str],
+        token: str,
+        identity: str,
+        time_budget: float | None = None,
+    ) -> SyncResult:
         self.calls.append((owner, set(repos), token, identity))
+        self.time_budgets.append(time_budget)
         names = sorted(repos, key=str.lower)
         if self.interrupt_after is not None:
             done = names[: self.interrupt_after]

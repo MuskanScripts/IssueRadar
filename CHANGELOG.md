@@ -24,6 +24,10 @@ All notable changes to this project are documented here. The format follows
 - Platform public pages: an intro page with live numbers, a stack picker with three real issues and a locked fourth, merged this week and questions; Trending with four tabs; issue previews and public profiles with link-preview images; a sitemap and robots.txt. Public API answers are cached and rate-limited per IP. An optional PostHog funnel from the intro page to the first merged pull request.
 - Platform launch: maintainers can opt a repo out with `.github/firstpr.yml`; invite-only sign-in for testers; Delete my account; Sentry error reports from the API, worker and browser; Prometheus metrics behind a token, with alert rules; security headers and a CSP; a feedback link and a page for maintainers. Deploy with a Render Blueprint (`render.yaml`) or on one server with `compose.prod.yaml` and automatic HTTPS; `scripts/backup.sh` dumps both databases. Guide in `docs/deploy.md`.
 
+### Fixed
+
+- The half-hourly catalogue sync was stopped after 5 minutes every time (scheduled jobs did not get the 30-minute limit) and then started over from the first repo, so a first sync with many repos never finished and Explore stayed empty. A sync now stops by itself after 20 minutes between two repos, saves what it finished, and the next run carries on from there; a run that was killed is carried on too. Two catalogue syncs can no longer run at the same time.
+
 ## [0.2.0] - 2026-10-03
 
 ### Added

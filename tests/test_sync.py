@@ -120,6 +120,55 @@ async def test_quota_exhaustion_mid_sync_resumes_without_data_loss(
         assert runs[0].repos_done == ["a/one", "a/two", "a/three"]
 
 
+async def test_a_run_out_of_time_stops_between_repos_and_the_next_run_carries_on(
+    db: Database, settings: Settings
+) -> None:
+    fake = FakeGitHub()
+    for i, name in enumerate(["a/one", "a/two", "a/three"]):
+        serve_repo(fake, name, [example_issue(1, id=41_000_000_000 + i)])
+        watchlist.add(db, name)
+
+    async with GitHubClient(
+        settings.github, "t", cache=SqlEtagCache(db.sessions), transport=fake.transport()
+    ) as client:
+        # No time at all: the first repo is still synced, then the run stops.
+        first = await SyncService(db, client, settings, time_budget=0).run()
+    assert first.status == "interrupted"
+    assert "next sync carries on" in (first.message or "")
+    assert [o.full_name for o in first.outcomes] == ["a/one"]
+
+    second = await sync(db, settings, fake)
+    assert second.resumed is True
+    assert second.status == "completed"
+    assert [o.full_name for o in second.outcomes] == ["a/two", "a/three"]
+    assert count(db, Issue) == 3
+
+
+async def test_a_run_that_was_killed_is_carried_on_not_started_over(
+    db: Database, settings: Settings
+) -> None:
+    fake = FakeGitHub()
+    for i, name in enumerate(["a/one", "a/two"]):
+        serve_repo(fake, name, [example_issue(1, id=42_000_000_000 + i)])
+        watchlist.add(db, name)
+    # What a worker leaves behind when it is stopped in the middle of a repo.
+    with db.sessions.begin() as session:
+        session.add(
+            SyncRun(
+                user_id=1,
+                status="running",
+                repos_planned=["a/one", "a/two"],
+                repos_done=["a/one"],
+            )
+        )
+
+    report = await sync(db, settings, fake)
+    assert report.resumed is True
+    assert report.status == "completed"
+    assert [o.full_name for o in report.outcomes] == ["a/two"]
+    assert count(db, SyncRun) == 1
+
+
 async def test_one_failing_repo_does_not_fail_the_run(db: Database, settings: Settings) -> None:
     fake = FakeGitHub()
     serve_repo(fake, "a/one", [example_issue(1)])
