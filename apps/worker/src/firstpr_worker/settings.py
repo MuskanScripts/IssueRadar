@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # development, staging or production; shown in Sentry.
     environment: str = "development"
 
+    # How long one sync job may spend on GitHub before it stops between repos and
+    # leaves the rest to the next run. Below the job's own 30-minute limit, so the
+    # repos it did finish are always saved.
+    sync_time_budget_seconds: int = 20 * 60
+
     # Personal syncs only run for people who used the site in this many days.
     active_days: int = 14
     # Stop starting new requests when this share of a token's hourly limit is left.

@@ -145,12 +145,23 @@ class WorkerSettings:
         func(check_opt_outs, keep_result=0, timeout=30 * 60),
         func(forget_user, keep_result=0),
     ]
+    # Scheduled runs do not take the timeout given to func() above; without their
+    # own they are stopped after arq's default of 5 minutes.
     cron_jobs: ClassVar = [
         cron(heartbeat, second=0, run_at_startup=False),
-        cron(sync_catalogue, minute={0, 30}, second=10, unique=True, keep_result=0),
+        cron(
+            sync_catalogue, minute={0, 30}, second=10, timeout=30 * 60, unique=True, keep_result=0
+        ),
         cron(sync_active_users, minute={15, 45}, second=10, unique=True, keep_result=0),
         cron(make_daily_picks, minute={5, 20, 35, 50}, second=10, unique=True, keep_result=0),
-        cron(check_workspaces, minute=set(range(2, 60, 5)), second=0, unique=True, keep_result=0),
+        cron(
+            check_workspaces,
+            minute=set(range(2, 60, 5)),
+            second=0,
+            timeout=10 * 60,
+            unique=True,
+            keep_result=0,
+        ),
         cron(
             track_active_users,
             hour=set(range(0, 24, 2)),
@@ -159,10 +170,10 @@ class WorkerSettings:
             unique=True,
             keep_result=0,
         ),
-        cron(send_digests, minute=25, second=0, unique=True, keep_result=0),
+        cron(send_digests, minute=25, second=0, timeout=10 * 60, unique=True, keep_result=0),
         cron(flush_activity, minute=set(range(1, 60, 10)), second=30, unique=True, keep_result=0),
         # Hourly, but each repo is read at most once a day.
-        cron(check_opt_outs, minute=50, second=0, unique=True, keep_result=0),
+        cron(check_opt_outs, minute=50, second=0, timeout=30 * 60, unique=True, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown
